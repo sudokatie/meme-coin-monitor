@@ -42,6 +42,8 @@ class SolanaRpcConfig(BaseModel):
 
     endpoint: str = "https://api.mainnet-beta.solana.com"
     timeout_seconds: int = 10
+    helius_api_keys: list[str] = Field(default_factory=list)
+    helius_base_url: str = "https://mainnet.helius-rpc.com"
 
 
 class PumpFunConfig(BaseModel):
@@ -58,6 +60,10 @@ class IngestionConfig(BaseModel):
     dex_screener: DexScreenerConfig = Field(default_factory=DexScreenerConfig)
     solana_rpc: SolanaRpcConfig = Field(default_factory=SolanaRpcConfig)
     pump_fun: PumpFunConfig = Field(default_factory=PumpFunConfig)
+    
+    # Scheduler settings (can be increased with multiple API keys)
+    max_tokens_per_cycle: int = 10  # Max new tokens to process per discovery cycle
+    token_processing_delay: float = 3.0  # Seconds between processing each token
 
 
 class AnalysisConfig(BaseModel):
@@ -193,6 +199,18 @@ def _apply_env_overrides(config_dict: dict[str, Any]) -> dict[str, Any]:
                 value = int(value)
             current[final_key] = value
             logger.debug(f"Applied environment override: {env_var}")
+
+    # Handle HELIUS_API_KEYS specially (comma-separated list)
+    helius_keys = os.environ.get("HELIUS_API_KEYS")
+    if helius_keys:
+        keys = [k.strip() for k in helius_keys.split(",") if k.strip()]
+        if keys:
+            if "ingestion" not in config_dict:
+                config_dict["ingestion"] = {}
+            if "solana_rpc" not in config_dict["ingestion"]:
+                config_dict["ingestion"]["solana_rpc"] = {}
+            config_dict["ingestion"]["solana_rpc"]["helius_api_keys"] = keys
+            logger.info(f"Loaded {len(keys)} Helius API key(s) from environment")
 
     return config_dict
 

@@ -139,8 +139,11 @@ class IngestionScheduler:
         poll_interval = self._config.dex_screener.poll_interval_seconds
 
         # Rate limiting: max tokens per cycle and delay between each
-        max_tokens_per_cycle = 10
-        delay_between_tokens = 3.0  # seconds between each token analysis
+        # These can be increased via config when using multiple API keys
+        max_tokens_per_cycle = self._config.max_tokens_per_cycle
+        delay_between_tokens = self._config.token_processing_delay
+        
+        logger.info(f"Discovery settings: max_tokens={max_tokens_per_cycle}, delay={delay_between_tokens}s")
 
         while self._running:
             try:
