@@ -248,3 +248,55 @@ class DexScreenerClient(BaseIngester):
             return []
 
         return data if isinstance(data, list) else data.get("pairs", [])
+
+    async def get_latest_boosts(self, chain: str | None = None) -> list[str]:
+        """
+        Get token addresses from latest boosts (trending/promoted tokens).
+
+        Args:
+            chain: Filter by blockchain (default: solana)
+
+        Returns:
+            List of token addresses
+        """
+        chain = chain or self.DEFAULT_CHAIN
+        endpoint = "/token-boosts/latest/v1"
+        data = await self._request(endpoint)
+
+        if not data or not isinstance(data, list):
+            return []
+
+        addresses: list[str] = []
+        for item in data:
+            if item.get("chainId") == chain:
+                addr = item.get("tokenAddress")
+                if addr:
+                    addresses.append(addr)
+
+        return addresses
+
+    async def get_latest_profiles(self, chain: str | None = None) -> list[str]:
+        """
+        Get token addresses from latest profiles (newly profiled tokens).
+
+        Args:
+            chain: Filter by blockchain (default: solana)
+
+        Returns:
+            List of token addresses
+        """
+        chain = chain or self.DEFAULT_CHAIN
+        endpoint = "/token-profiles/latest/v1"
+        data = await self._request(endpoint)
+
+        if not data or not isinstance(data, list):
+            return []
+
+        addresses: list[str] = []
+        for item in data:
+            if item.get("chainId") == chain:
+                addr = item.get("tokenAddress")
+                if addr:
+                    addresses.append(addr)
+
+        return addresses

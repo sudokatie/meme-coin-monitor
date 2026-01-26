@@ -129,6 +129,53 @@ class IngestionScheduler:
 
         logger.info("Pump.fun polling loop stopped")
 
+    async def _poll_dex_discovery(self) -> None:
+        """Poll DexScreener for new token discovery via boosts and profiles."""
+        if not self._config.dex_screener.enabled:
+            logger.info("DexScreener discovery disabled")
+            return
+
+        logger.info("Starting DexScreener discovery loop")
+        poll_interval = self._config.dex_screener.poll_interval_seconds
+
+        while self._running:
+            try:
+                # Get trending tokens from boosts
+                boost_addresses = await self._dex_client.get_latest_boosts()
+                # Get newly profiled tokens
+                profile_addresses = await self._dex_client.get_latest_profiles()
+
+                # Combine and dedupe
+                all_addresses = set(boost_addresses + profile_addresses)
+                new_addresses = [a for a in all_addresses if a not in self._seen_tokens]
+
+                if new_addresses:
+                    logger.info(f"Discovered {len(new_addresses)} new tokens via DexScreener")
+
+                    # Fetch in batches of 30
+                    for i in range(0, len(new_addresses), 30):
+                        batch = new_addresses[i:i + 30]
+                        tokens = await self._dex_client.fetch_batch(batch)
+
+                        for token in tokens:
+                            self._seen_tokens.add(token.address)
+                            logger.info(f"New token: {token.symbol} ({token.address[:8]}...)")
+                            await self._notify(token.address, token)
+
+                # Cap seen tokens to prevent memory bloat
+                if len(self._seen_tokens) > 10000:
+                    self._seen_tokens = set(list(self._seen_tokens)[-5000:])
+
+                await asyncio.sleep(poll_interval)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"DexScreener discovery error: {e}")
+                await asyncio.sleep(10)
+
+        logger.info("DexScreener discovery loop stopped")
+
     async def start(self) -> None:
         """Start the scheduler."""
         if self._running:
@@ -139,7 +186,11 @@ class IngestionScheduler:
         self._running = True
 
         if self._config.dex_screener.enabled:
+            # Watchlist polling for manually added tokens
             task = asyncio.create_task(self._poll_watchlist())
+            self._tasks.append(task)
+            # Auto-discovery via DexScreener boosts/profiles
+            task = asyncio.create_task(self._poll_dex_discovery())
             self._tasks.append(task)
 
         if self._config.pump_fun.enabled:
