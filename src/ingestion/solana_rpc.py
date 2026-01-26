@@ -260,12 +260,13 @@ class SolanaRpcClient:
             logger.warning(f"Invalid mint address: {mint_address}")
             return []
 
+        # Get largest token accounts (fresh client with key rotation)
         await self._rate_limit()
-        client = await self._get_client()
+        largest_client = await self._get_client()
 
         try:
             pubkey = Pubkey.from_string(mint_address)
-            response = await client.get_token_largest_accounts(
+            response = await largest_client.get_token_largest_accounts(
                 pubkey,
                 commitment=Commitment("confirmed"),
             )
@@ -273,16 +274,16 @@ class SolanaRpcClient:
             logger.error(f"Failed to get largest accounts for {mint_address}: {e}")
             return []
         finally:
-            await self._close_client(client)
+            await self._close_client(largest_client)
 
         if not response.value:
             return []
 
+        # Look up each holder's wallet address (fresh client per lookup for rotation)
         holders: list[HolderInfo] = []
         for account in response.value[:limit]:
             if account.amount and int(account.amount.amount) > 0:
                 try:
-                    # Get fresh client for each holder lookup (rotates keys)
                     await self._rate_limit()
                     holder_client = await self._get_client()
                     
@@ -309,7 +310,6 @@ class SolanaRpcClient:
                         await self._close_client(holder_client)
                 except Exception as e:
                     logger.debug(f"Failed to get holder info for {account.address}: {e}")
-                    # Still add the holder with token account address
                     holders.append(
                         HolderInfo(
                             wallet=str(account.address),
@@ -340,8 +340,9 @@ class SolanaRpcClient:
         client = await self._get_client()
 
         try:
+            pubkey = Pubkey.from_string(address)
             response = await client.get_signatures_for_address(
-                address,
+                pubkey,
                 limit=limit,
                 commitment=Commitment("confirmed"),
             )
