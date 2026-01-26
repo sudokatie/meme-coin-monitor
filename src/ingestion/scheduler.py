@@ -138,6 +138,10 @@ class IngestionScheduler:
         logger.info("Starting DexScreener discovery loop")
         poll_interval = self._config.dex_screener.poll_interval_seconds
 
+        # Rate limiting: max tokens per cycle and delay between each
+        max_tokens_per_cycle = 10
+        delay_between_tokens = 3.0  # seconds between each token analysis
+
         while self._running:
             try:
                 # Get trending tokens from boosts
@@ -150,17 +154,22 @@ class IngestionScheduler:
                 new_addresses = [a for a in all_addresses if a not in self._seen_tokens]
 
                 if new_addresses:
-                    logger.info(f"Discovered {len(new_addresses)} new tokens via DexScreener")
+                    # Limit how many we process per cycle to avoid rate limiting
+                    to_process = new_addresses[:max_tokens_per_cycle]
+                    logger.info(f"Discovered {len(new_addresses)} new tokens, processing {len(to_process)}")
 
-                    # Fetch in batches of 30
-                    for i in range(0, len(new_addresses), 30):
-                        batch = new_addresses[i:i + 30]
-                        tokens = await self._dex_client.fetch_batch(batch)
+                    # Mark all as seen to avoid reprocessing next cycle
+                    for addr in new_addresses:
+                        self._seen_tokens.add(addr)
 
-                        for token in tokens:
-                            self._seen_tokens.add(token.address)
-                            logger.info(f"New token: {token.symbol} ({token.address[:8]}...)")
-                            await self._notify(token.address, token)
+                    # Fetch and analyze with delays
+                    tokens = await self._dex_client.fetch_batch(to_process)
+
+                    for token in tokens:
+                        logger.info(f"New token: {token.symbol} ({token.address[:8]}...)")
+                        await self._notify(token.address, token)
+                        # Delay between tokens to avoid Helius rate limiting
+                        await asyncio.sleep(delay_between_tokens)
 
                 # Cap seen tokens to prevent memory bloat
                 if len(self._seen_tokens) > 10000:

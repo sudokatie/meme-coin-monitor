@@ -62,6 +62,9 @@ def is_valid_address(address: str) -> bool:
 class SolanaRpcClient:
     """Client for Solana RPC calls."""
 
+    # Minimum delay between RPC calls to avoid rate limiting (Helius free tier)
+    MIN_REQUEST_INTERVAL = 0.5  # 500ms between requests = ~120/min max
+
     def __init__(self, config: SolanaRpcConfig) -> None:
         """
         Initialize Solana RPC client.
@@ -71,6 +74,17 @@ class SolanaRpcClient:
         """
         self._config = config
         self._client: AsyncClient | None = None
+        self._last_request_time: float = 0
+
+    async def _rate_limit(self) -> None:
+        """Enforce minimum delay between requests."""
+        import asyncio
+        import time
+        now = time.time()
+        elapsed = now - self._last_request_time
+        if elapsed < self.MIN_REQUEST_INTERVAL:
+            await asyncio.sleep(self.MIN_REQUEST_INTERVAL - elapsed)
+        self._last_request_time = time.time()
 
     async def _get_client(self) -> AsyncClient:
         """Get or create RPC client."""
@@ -101,6 +115,7 @@ class SolanaRpcClient:
             logger.warning(f"Invalid mint address: {mint_address}")
             return None
 
+        await self._rate_limit()
         client = await self._get_client()
 
         try:
@@ -165,6 +180,7 @@ class SolanaRpcClient:
         if not is_valid_address(mint_address):
             return None
 
+        await self._rate_limit()
         client = await self._get_client()
 
         try:
@@ -200,6 +216,7 @@ class SolanaRpcClient:
             logger.warning(f"Invalid mint address: {mint_address}")
             return []
 
+        await self._rate_limit()
         client = await self._get_client()
 
         try:
@@ -256,6 +273,7 @@ class SolanaRpcClient:
         if not is_valid_address(address):
             return []
 
+        await self._rate_limit()
         client = await self._get_client()
 
         try:
