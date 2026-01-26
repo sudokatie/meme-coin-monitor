@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meme Coin Monitor</title>
+    <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MEME COIN MONITOR</h1>
+            <div class="status-bar">
+                <span id="connection-status" class="status disconnected">DISCONNECTED</span>
+                <span id="last-update">Last update: --</span>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="overview">OVERVIEW</button>
+            <button class="tab" data-tab="risky">RISKY TOKENS</button>
+            <button class="tab" data-tab="opportunities">OPPORTUNITIES</button>
+            <button class="tab" data-tab="alerts">ALERTS</button>
+            <button class="tab" data-tab="lookup">TOKEN LOOKUP</button>
+        </nav>
+
+        <main>
+            <!-- Overview Tab -->
+            <section id="overview" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">RISKY TOKENS</div>
+                        <div class="stat-value" id="risky-count">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">OPPORTUNITIES</div>
+                        <div class="stat-value" id="opportunity-count">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">ALERTS (24H)</div>
+                        <div class="stat-value" id="alert-count">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">API STATUS</div>
+                        <div class="stat-value" id="api-status">--</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>RECENT ALERTS</h2>
+                    <div id="recent-alerts" class="alert-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="two-col">
+                    <div class="panel">
+                        <h2>TOP RISKY</h2>
+                        <div id="top-risky" class="token-list">
+                            <div class="loading">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h2>TOP OPPORTUNITIES</h2>
+                        <div id="top-opportunities" class="token-list">
+                            <div class="loading">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Risky Tokens Tab -->
+            <section id="risky" class="tab-content">
+                <div class="panel">
+                    <h2>HIGH RISK TOKENS</h2>
+                    <div class="controls">
+                        <button id="refresh-risky" class="btn">REFRESH</button>
+                    </div>
+                    <div id="risky-tokens" class="token-table-container">
+                        <table class="token-table">
+                            <thead>
+                                <tr>
+                                    <th>ADDRESS</th>
+                                    <th>RISK</th>
+                                    <th>OPPORTUNITY</th>
+                                    <th>CONFIDENCE</th>
+                                    <th>TIME</th>
+                                </tr>
+                            </thead>
+                            <tbody id="risky-tbody">
+                                <tr><td colspan="5" class="loading">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Opportunities Tab -->
+            <section id="opportunities" class="tab-content">
+                <div class="panel">
+                    <h2>OPPORTUNITY TOKENS</h2>
+                    <div class="controls">
+                        <button id="refresh-opportunities" class="btn">REFRESH</button>
+                    </div>
+                    <div id="opportunity-tokens" class="token-table-container">
+                        <table class="token-table">
+                            <thead>
+                                <tr>
+                                    <th>ADDRESS</th>
+                                    <th>OPPORTUNITY</th>
+                                    <th>RISK</th>
+                                    <th>CONFIDENCE</th>
+                                    <th>TIME</th>
+                                </tr>
+                            </thead>
+                            <tbody id="opportunities-tbody">
+                                <tr><td colspan="5" class="loading">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Alerts Tab -->
+            <section id="alerts" class="tab-content">
+                <div class="panel">
+                    <h2>ALL ALERTS</h2>
+                    <div class="controls">
+                        <select id="alert-filter">
+                            <option value="">ALL TYPES</option>
+                            <option value="rug_pull">RUG PULL</option>
+                            <option value="honeypot">HONEYPOT</option>
+                            <option value="whale_dump">WHALE DUMP</option>
+                            <option value="wash_trading">WASH TRADING</option>
+                            <option value="high_risk">HIGH RISK</option>
+                        </select>
+                        <button id="refresh-alerts" class="btn">REFRESH</button>
+                    </div>
+                    <div id="all-alerts" class="alert-list-full">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Token Lookup Tab -->
+            <section id="lookup" class="tab-content">
+                <div class="panel">
+                    <h2>TOKEN LOOKUP</h2>
+                    <div class="lookup-form">
+                        <input type="text" id="token-address" placeholder="Enter token address..." />
+                        <button id="lookup-btn" class="btn">ANALYZE</button>
+                    </div>
+                    <div id="token-result" class="token-detail">
+                        <div class="placeholder">Enter a token address to view analysis</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>WATCHLIST</h2>
+                    <div class="lookup-form">
+                        <input type="text" id="watch-address" placeholder="Enter token address..." />
+                        <button id="watch-add-btn" class="btn">ADD</button>
+                        <button id="watch-remove-btn" class="btn btn-danger">REMOVE</button>
+                    </div>
+                    <div id="watchlist-status"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span>Meme Coin Monitor v0.1.0</span>
+            <span>API: <span id="api-url"></span></span>
+        </footer>
+    </div>
+
+    <script src="app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,235 @@
+Metadata-Version: 2.4
+Name: meme-coin-monitor
+Version: 0.1.0
+Summary: Monitor Solana meme coins for fraud patterns and rug pull detection
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: pydantic-settings>=2.1.0
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: aiosqlite>=0.19.0
+Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: solana>=0.32.0
+Requires-Dist: base58>=2.1.0
+Requires-Dist: fastapi>=0.109.0
+Requires-Dist: uvicorn>=0.27.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.8.0; extra == "dev"
+Provides-Extra: telegram
+Requires-Dist: python-telegram-bot>=20.7; extra == "telegram"
+Provides-Extra: postgres
+Requires-Dist: asyncpg>=0.29.0; extra == "postgres"
+
+# Meme Coin Monitor
+
+A Python system for monitoring Solana meme coins, detecting fraud patterns, and identifying rug pulls before they happen.
+
+## Philosophy
+
+> "If you can first learn to watch for patterns and then never trade those if fraud is detected on a previous meme coin that looks just like it, then you can always avoid those coins and not lose your whole stack."
+
+Defensive-first: avoid losses before seeking gains.
+
+## Features
+
+- Real-time monitoring of new token launches via pump.fun
+- Contract analysis (mint/freeze authority detection)
+- Holder distribution analysis (concentration, whale detection)
+- Liquidity analysis (pool depth, slippage estimation)
+- Trading pattern analysis (wash trading, pump detection)
+- Pattern matching against known scams
+- Risk scoring (0-100 with LOW/MEDIUM/HIGH/CRITICAL categories)
+- Opportunity scoring for low-risk tokens
+- Alert system with webhook delivery
+- REST API for queries and management
+
+## Project Structure
+
+```
+meme-coin-monitor/
+├── pyproject.toml           # Project metadata and dependencies
+├── requirements.txt         # Pinned dependencies
+├── config/
+│   └── default.yaml         # Configuration file
+├── src/
+│   ├── main.py              # Entry point
+│   ├── config.py            # Config loading and validation
+│   ├── storage/
+│   │   ├── database.py      # Async SQLAlchemy setup
+│   │   ├── models.py        # Token, Snapshot, Alert, Pattern, Wallet
+│   │   └── repositories.py  # Data access layer
+│   ├── ingestion/
+│   │   ├── base.py          # Base ingester class
+│   │   ├── dex_screener.py  # DEX Screener API client
+│   │   ├── solana_rpc.py    # Solana RPC client
+│   │   ├── pump_fun.py      # Pump.fun monitoring
+│   │   └── scheduler.py     # Polling coordinator
+│   ├── analysis/
+│   │   ├── base.py          # Base analyzer, Signal, AnalysisResult
+│   │   ├── contract_analyzer.py
+│   │   ├── holder_analyzer.py
+│   │   ├── liquidity_analyzer.py
+│   │   ├── trading_analyzer.py
+│   │   └── pattern_matcher.py
+│   ├── scoring/
+│   │   ├── risk_scorer.py       # Weighted risk scoring
+│   │   └── opportunity_scorer.py
+│   ├── alerts/
+│   │   ├── alert_manager.py # Alert generation and throttling
+│   │   └── webhook.py       # Webhook delivery
+│   ├── api/
+│   │   ├── server.py        # FastAPI setup
+│   │   └── routes.py        # REST endpoints
+│   └── utils/
+│       ├── solana.py        # Address validation, conversions
+│       └── formatting.py    # USD, percentage formatting
+├── tests/
+│   ├── conftest.py          # Pytest fixtures
+│   └── test_scoring.py      # Scoring tests
+├── data/                    # Runtime data (created automatically)
+└── logs/                    # Log files (created automatically)
+```
+
+## Installation
+
+```bash
+# Clone or navigate to project
+cd projects/meme-coin-monitor
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -e .
+
+# Or use requirements.txt
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Analyze a Single Token
+
+```bash
+python -m src.main --token <SOLANA_TOKEN_ADDRESS>
+
+# Example
+python -m src.main --token So11111111111111111111111111111111111111112
+```
+
+### Run the Monitor
+
+```bash
+# Start monitoring with API server
+python -m src.main
+
+# Without API server
+python -m src.main --no-api
+
+# With debug logging
+python -m src.main --debug
+
+# Custom config file
+python -m src.main --config /path/to/config.yaml
+```
+
+### API Endpoints
+
+When running, the API is available at `http://127.0.0.1:8080`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/token/{address}` | GET | Full token analysis |
+| `/token/{address}/score` | GET | Just risk/opportunity scores |
+| `/tokens/risky` | GET | List high-risk tokens |
+| `/tokens/opportunities` | GET | List opportunity tokens |
+| `/alerts` | GET | Query alerts (filter by token, type) |
+| `/watch/{address}` | POST | Add token to watchlist |
+| `/watch/{address}` | DELETE | Remove from watchlist |
+
+## Configuration
+
+Edit `config/default.yaml` or set environment variables:
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `SOLANA_RPC_URL` | Solana RPC endpoint |
+| `DATABASE_URL` | Database connection string |
+| `ALERT_WEBHOOK_URL` | Webhook URL for alerts |
+| `LOG_LEVEL` | Logging level (DEBUG/INFO/WARNING/ERROR) |
+| `API_HOST` | API server host |
+| `API_PORT` | API server port |
+
+### Key Config Options
+
+```yaml
+database:
+  type: sqlite                    # or postgresql
+  path: data/meme_monitor.db
+
+ingestion:
+  dex_screener:
+    poll_interval_seconds: 30
+  pump_fun:
+    poll_interval_seconds: 10
+
+scoring:
+  thresholds:
+    high_risk: 51                 # Score >= 51 = HIGH risk
+    critical_risk: 76             # Score >= 76 = CRITICAL risk
+
+alerts:
+  webhook_url: null               # Set to receive alerts
+  throttle_per_token_minutes: 60  # Max 1 alert per token per hour
+```
+
+## Risk Signals
+
+| Signal | Severity | Weight | Description |
+|--------|----------|--------|-------------|
+| MINT_AUTHORITY_ACTIVE | HIGH | 25 | Can mint unlimited tokens |
+| FREEZE_AUTHORITY_ACTIVE | MEDIUM | 15 | Can freeze transfers |
+| KNOWN_SCAMMER_DEPLOYER | CRITICAL | 30 | Deployed by known scammer |
+| HIGH_CONCENTRATION | HIGH | 20 | Top 10 holders > 50% |
+| CRITICAL_LOW_LIQUIDITY | CRITICAL | 20 | Liquidity < $1,000 |
+| WASH_TRADING_DETECTED | HIGH | 15 | Suspicious trading patterns |
+| HEAVY_SELLING | HIGH | 10 | Buy/sell ratio < 0.2 |
+
+## Running Tests
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# With coverage
+pytest --cov=src
+```
+
+## Data Sources
+
+- DEX Screener API - Price, volume, liquidity data
+- Solana RPC - On-chain token data, holder distribution
+- Pump.fun - New token launches, graduations
+
+## License
+
+Private - for personal use only.
+
+## Build Documentation
+
+See `~/clawd/docs/meme-coin-monitor/` for:
+- RESEARCH.md - Background research
+- SPECS.md - Technical specifications
+- TODOS.md - Project todos and file tree
+- TASKS.md - Implementation task details
+- STATE.md - Master build guide

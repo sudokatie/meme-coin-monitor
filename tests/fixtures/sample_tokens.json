@@ -1,0 +1,93 @@
+{
+  "legitimate_tokens": [
+    {
+      "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "name": "USD Coin",
+      "symbol": "USDC",
+      "expected_risk": "LOW",
+      "notes": "Stablecoin with known issuer"
+    },
+    {
+      "address": "So11111111111111111111111111111111111111112",
+      "name": "Wrapped SOL",
+      "symbol": "SOL",
+      "expected_risk": "LOW",
+      "notes": "Native wrapped token"
+    },
+    {
+      "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "name": "Bonk",
+      "symbol": "BONK",
+      "expected_risk": "LOW",
+      "notes": "Established meme coin"
+    }
+  ],
+  "known_rug_pulls": [
+    {
+      "address": "EXAMPLE_RUG_ADDRESS_1",
+      "name": "SafeMoon Classic",
+      "symbol": "SAFEMOONC",
+      "expected_risk": "CRITICAL",
+      "signals": ["KNOWN_SCAMMER_DEPLOYER", "HIGH_CONCENTRATION"],
+      "notes": "Example rug pull pattern"
+    },
+    {
+      "address": "EXAMPLE_RUG_ADDRESS_2",
+      "name": "ElonDoge2x",
+      "symbol": "ELONDOGE2X",
+      "expected_risk": "HIGH",
+      "signals": ["MINT_AUTHORITY_ACTIVE", "COPYCAT_NAME"],
+      "notes": "Copycat with active mint"
+    }
+  ],
+  "edge_cases": [
+    {
+      "address": "EDGE_CASE_1",
+      "name": "New Token",
+      "symbol": "NEW",
+      "scenario": "brand_new_token",
+      "notes": "Token with no trading history"
+    },
+    {
+      "address": "EDGE_CASE_2",
+      "name": "Zero Liquidity",
+      "symbol": "ZERO",
+      "scenario": "no_liquidity",
+      "notes": "Token with no liquidity pools"
+    },
+    {
+      "address": "EDGE_CASE_3",
+      "name": "Single Holder",
+      "symbol": "SINGLE",
+      "scenario": "one_holder",
+      "notes": "Token held by single wallet"
+    }
+  ],
+  "test_signals": {
+    "MINT_AUTHORITY_ACTIVE": {
+      "severity": "HIGH",
+      "weight": 25,
+      "description": "Token mint authority is not revoked"
+    },
+    "FREEZE_AUTHORITY_ACTIVE": {
+      "severity": "MEDIUM",
+      "weight": 15,
+      "description": "Token freeze authority is not revoked"
+    },
+    "KNOWN_SCAMMER_DEPLOYER": {
+      "severity": "CRITICAL",
+      "weight": 30,
+      "description": "Deployer wallet is a known scammer"
+    },
+    "HIGH_CONCENTRATION": {
+      "severity": "HIGH",
+      "weight": 20,
+      "description": "Top 10 holders control >50% of supply"
+    },
+    "UNLOCKED_LIQUIDITY": {
+      "severity": "HIGH",
+      "weight": 15,
+      "description": "Liquidity is not locked"
+    }
+  }
+}

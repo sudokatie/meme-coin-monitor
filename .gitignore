@@ -1,0 +1,39 @@
+# Private/personal
+TRADING-STRATEGY.md
+TRADING-RESEARCH.md
+TRADING-TESTPLAN.md
+memory/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+
+# Data
+*.db
+*.sqlite
+data/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config with secrets
+config/local.yaml
+config/production.yaml
+.env

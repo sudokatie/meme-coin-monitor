@@ -1,0 +1,74 @@
+# Meme Coin Monitor Configuration
+
+database:
+  type: sqlite
+  path: data/meme_monitor.db
+  # For PostgreSQL:
+  # type: postgresql
+  # connection_string: postgresql+asyncpg://user:pass@localhost/dbname
+
+ingestion:
+  dex_screener:
+    enabled: true
+    poll_interval_seconds: 30
+    base_url: https://api.dexscreener.com
+    rate_limit_per_minute: 60
+  solana_rpc:
+    endpoint: https://api.mainnet-beta.solana.com
+    # For better rate limits, use Helius (free tier available):
+    # endpoint: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
+    timeout_seconds: 10
+  pump_fun:
+    enabled: false  # Disabled - Cloudflare blocking API requests
+    poll_interval_seconds: 10
+    # On-chain mode reads directly from blockchain (bypasses API)
+    use_onchain: true
+
+analysis:
+  holder_dust_threshold: 0.0001
+  holder_sample_limit: 1000
+  transaction_limit: 1000
+  cache_ttl_seconds: 300
+
+scoring:
+  risk_weights:
+    mint_authority_active: 25
+    freeze_authority_active: 15
+    high_concentration: 20
+    moderate_concentration: 10
+    unlocked_liquidity: 15
+    known_scammer_deployer: 30
+    known_scammer_holder: 25
+    low_liquidity: 10
+    critical_low_liquidity: 20
+    wash_trading_detected: 15
+    similar_name: 10
+    copycat_name: 15
+    high_slippage: 10
+    heavy_selling: 10
+  thresholds:
+    high_risk: 51
+    critical_risk: 76
+    top_holder_warning: 50
+    top_holder_critical: 70
+    min_liquidity_usd: 1000
+    critical_liquidity_usd: 10000
+
+alerts:
+  enabled: true
+  webhook_url: null
+  telegram_bot_token: null
+  telegram_chat_id: null
+  throttle_per_token_minutes: 60
+  throttle_global_per_hour: 100
+
+api:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080
+
+logging:
+  level: INFO
+  file: logs/monitor.log
+  json_file: logs/monitor.jsonl
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

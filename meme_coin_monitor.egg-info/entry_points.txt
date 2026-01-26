@@ -1,0 +1,2 @@
+[console_scripts]
+meme-monitor = src.main:main
