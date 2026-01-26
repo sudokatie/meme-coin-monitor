@@ -46,6 +46,8 @@ scoring:
     copycat_name: 15
     high_slippage: 10
     heavy_selling: 10
+    coordinated_buying: 20
+    high_new_wallet_ratio: 10
   thresholds:
     high_risk: 51
     critical_risk: 76

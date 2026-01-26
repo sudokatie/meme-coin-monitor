@@ -1,6 +1,7 @@
 """Holder analyzer - analyzes token holder distribution."""
 
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,6 +24,13 @@ BURN_ADDRESSES = {
     "11111111111111111111111111111111",
 }
 
+# Wallet prefixes that indicate programmatic/bot wallets (often new wallets)
+BOT_WALLET_PREFIXES = [
+    "1111",  # Sequential generation pattern
+    "aaaa",
+    "AAAA",
+]
+
 
 @dataclass
 class HolderAnalysis(AnalysisResult):
@@ -35,6 +43,8 @@ class HolderAnalysis(AnalysisResult):
     largest_holder_pct: float = 0.0
     known_scammer_found: bool = False
     scammer_wallets: list[str] | None = None
+    new_wallet_percentage: float = 0.0  # % of holders with new/suspicious wallets
+    coordinated_buy_detected: bool = False  # Multiple wallets with identical balances
 
 
 def calculate_gini(balances: list[int]) -> float:
@@ -197,6 +207,48 @@ class HolderAnalyzer(BaseAnalyzer):
                 value=total_holders,
             ))
 
+        # Check for coordinated buying (same block/slot purchases)
+        # Detected by finding multiple wallets with identical non-trivial balances
+        coordinated_buy_detected = False
+        if len(balances) >= 5:
+            balance_counts = Counter(balances)
+            # Find balances that appear 3+ times (excluding dust amounts)
+            min_meaningful_balance = total_balance * 0.001  # 0.1% of total
+            suspicious_balances = [
+                (bal, count) for bal, count in balance_counts.items()
+                if count >= 3 and bal >= min_meaningful_balance
+            ]
+            if suspicious_balances:
+                coordinated_buy_detected = True
+                largest_cluster = max(suspicious_balances, key=lambda x: x[1])
+                signals.append(Signal(
+                    name="COORDINATED_BUYING",
+                    severity=Severity.HIGH,
+                    description=f"Found {largest_cluster[1]} wallets with identical balance ({largest_cluster[0]:,} tokens)",
+                    value={"cluster_size": largest_cluster[1], "balance": largest_cluster[0]},
+                ))
+
+        # Check for new/suspicious wallets (wallet age analysis)
+        # Wallets with certain patterns often indicate programmatic creation
+        new_wallet_count = 0
+        for holder in filtered_holders[:50]:  # Check top 50 holders
+            wallet = holder.wallet
+            # Check for suspicious prefixes (often bot-generated wallets)
+            if any(wallet.startswith(prefix) for prefix in BOT_WALLET_PREFIXES):
+                new_wallet_count += 1
+            # Check for sequential-looking addresses (very short unique portion)
+            elif len(set(wallet[:8])) <= 3:  # Low entropy in first 8 chars
+                new_wallet_count += 1
+
+        new_wallet_percentage = (new_wallet_count / min(len(filtered_holders), 50)) * 100
+        if new_wallet_percentage >= 30:
+            signals.append(Signal(
+                name="HIGH_NEW_WALLET_RATIO",
+                severity=Severity.MEDIUM,
+                description=f"{new_wallet_percentage:.0f}% of top holders appear to be new/bot wallets",
+                value=new_wallet_percentage,
+            ))
+
         return HolderAnalysis(
             signals=signals,
             confidence=Confidence.HIGH if len(holders) >= 10 else Confidence.MEDIUM,
@@ -207,6 +259,8 @@ class HolderAnalyzer(BaseAnalyzer):
             largest_holder_pct=largest_pct,
             known_scammer_found=len(scammer_wallets) > 0,
             scammer_wallets=scammer_wallets if scammer_wallets else None,
+            new_wallet_percentage=new_wallet_percentage,
+            coordinated_buy_detected=coordinated_buy_detected,
             raw_data={
                 "holder_count": len(holders),
                 "filtered_count": len(filtered_holders),

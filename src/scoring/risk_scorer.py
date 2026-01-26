@@ -62,6 +62,8 @@ SIGNAL_WEIGHT_MAP = {
     "COPYCAT_NAME": "copycat_name",
     "HIGH_SLIPPAGE": "high_slippage",
     "HEAVY_SELLING": "heavy_selling",
+    "COORDINATED_BUYING": "coordinated_buying",
+    "HIGH_NEW_WALLET_RATIO": "high_new_wallet_ratio",
 }
 
 INSTANT_CRITICAL_SIGNALS = {

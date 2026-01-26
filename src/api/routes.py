@@ -325,3 +325,124 @@ async def remove_from_watchlist(address: str) -> dict[str, Any]:
         scheduler.remove_from_watchlist(address)
 
     return wrap_response({"address": address, "removed": True})
+
+
+# --- Pattern Management Endpoints (per SPECS.md 7.2.2) ---
+
+
+class PatternCreate(BaseModel):
+    """Pattern creation request."""
+
+    name: str
+    description: str
+    pattern_type: str  # DEPLOYER, CONTRACT, TRADING, HOLDER, NAME
+    pattern_data: dict[str, Any]
+    confidence: str = "MEDIUM"
+    source_tokens: list[str] = []
+
+
+class PatternResponse(BaseModel):
+    """Pattern response."""
+
+    id: str
+    name: str
+    description: str
+    pattern_type: str
+    pattern_data: dict[str, Any]
+    confidence: str
+    created_at: str
+    source_tokens: list[str]
+
+
+@router.get("/patterns")
+async def list_patterns(
+    pattern_type: str | None = Query(default=None, alias="type"),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict[str, Any]:
+    """
+    List known patterns.
+
+    Args:
+        pattern_type: Filter by pattern type (DEPLOYER, CONTRACT, TRADING, HOLDER, NAME)
+        limit: Maximum patterns to return
+    """
+    state = get_app_state()
+    patterns_list = []
+
+    if "database" in state:
+        async with state["database"].session() as session:
+            from src.storage.repositories import PatternRepository
+            repo = PatternRepository(session)
+
+            if pattern_type:
+                patterns = await repo.get_by_type(pattern_type.upper())
+            else:
+                patterns = await repo.get_all(limit=limit)
+
+            patterns_list = [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "description": p.description,
+                    "pattern_type": p.pattern_type,
+                    "pattern_data": p.pattern_data,
+                    "confidence": p.confidence,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                    "source_tokens": p.source_tokens or [],
+                }
+                for p in patterns
+            ]
+
+    return wrap_response(patterns_list)
+
+
+@router.post("/pattern")
+async def create_pattern(pattern: PatternCreate) -> dict[str, Any]:
+    """
+    Add a new pattern.
+
+    Args:
+        pattern: Pattern data
+    """
+    from datetime import datetime, timezone
+    from src.storage.models import Pattern
+
+    state = get_app_state()
+
+    if "database" not in state:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    # Validate pattern type
+    valid_types = {"DEPLOYER", "CONTRACT", "TRADING", "HOLDER", "NAME"}
+    if pattern.pattern_type.upper() not in valid_types:
+        raise HTTPException(
+            status_code=400,
+            detail=error_response(
+                "INVALID_PATTERN_TYPE",
+                f"pattern_type must be one of: {', '.join(valid_types)}"
+            )
+        )
+
+    async with state["database"].session() as session:
+        from src.storage.repositories import PatternRepository
+        repo = PatternRepository(session)
+
+        new_pattern = Pattern(
+            name=pattern.name,
+            description=pattern.description,
+            pattern_type=pattern.pattern_type.upper(),
+            pattern_data=pattern.pattern_data,
+            confidence=pattern.confidence.upper(),
+            created_at=datetime.now(timezone.utc),
+            source_tokens=pattern.source_tokens,
+        )
+
+        await repo.create(new_pattern)
+        await session.commit()
+
+        return wrap_response({
+            "id": new_pattern.id,
+            "name": new_pattern.name,
+            "pattern_type": new_pattern.pattern_type,
+            "created": True,
+        })

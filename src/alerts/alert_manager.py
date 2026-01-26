@@ -240,3 +240,73 @@ class AlertManager:
         self._record_alert(token_address, decision.alert_type)
 
         return alert
+
+    async def process_graduation(
+        self,
+        token_address: str,
+        token_name: str,
+        token_symbol: str,
+        market_cap: float | None = None,
+        dex: str | None = None,
+    ) -> Alert | None:
+        """
+        Process a pump.fun graduation event.
+
+        Graduation occurs when a token reaches ~$90k market cap and
+        moves from pump.fun bonding curve to Raydium DEX.
+
+        Args:
+            token_address: Token address
+            token_name: Token name
+            token_symbol: Token symbol
+            market_cap: Market cap at graduation
+            dex: DEX the token graduated to (e.g., "raydium")
+
+        Returns:
+            Alert if one was generated, None otherwise
+        """
+        if not self._config.enabled:
+            return None
+
+        if self._is_throttled(token_address, "GRADUATION"):
+            logger.debug(f"Graduation alert throttled for {token_address}")
+            return None
+
+        data: dict[str, Any] = {
+            "token_address": token_address,
+            "token_name": token_name,
+            "token_symbol": token_symbol,
+            "event": "graduation",
+        }
+
+        if market_cap:
+            data["market_cap"] = market_cap
+        if dex:
+            data["graduated_to"] = dex
+
+        message = f"GRADUATION: {token_symbol} graduated from pump.fun"
+        if dex:
+            message += f" to {dex.title()}"
+        if market_cap:
+            message += f" (mcap: ${market_cap:,.0f})"
+
+        alert = Alert(
+            token_address=token_address,
+            alert_type="GRADUATION",
+            severity="MEDIUM",
+            message=message,
+            data=data,
+            created_at=datetime.now(timezone.utc),
+        )
+
+        for channel in self._channels:
+            try:
+                success = await channel.deliver(alert)
+                if success:
+                    logger.info(f"Graduation alert delivered for {token_symbol}")
+            except Exception as e:
+                logger.error(f"Graduation alert channel error: {e}")
+
+        self._record_alert(token_address, "GRADUATION")
+
+        return alert

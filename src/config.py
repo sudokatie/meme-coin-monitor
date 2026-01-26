@@ -92,6 +92,8 @@ class RiskWeightsConfig(BaseModel):
     copycat_name: int = 15
     high_slippage: int = 10
     heavy_selling: int = 10
+    coordinated_buying: int = 20  # Multiple wallets with identical balances
+    high_new_wallet_ratio: int = 10  # High % of new/bot wallets
 
 
 class ThresholdsConfig(BaseModel):
