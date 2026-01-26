@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Meme Coin Monitor</title>
+    <link rel="stylesheet" href="style.css?v=2">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #0a0a0a;
+        }
+        
+        .login-container {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            font-size: 24px;
+            color: #00ff00;
+            margin-bottom: 10px;
+        }
+        
+        .login-header p {
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        .form-group input {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 12px;
+            font-size: 14px;
+            color: #00ff00;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #00ff00;
+        }
+        
+        .login-btn {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 14px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-family: 'Consolas', 'Monaco', monospace;
+            margin-top: 10px;
+        }
+        
+        .login-btn:hover {
+            background: #00cc00;
+        }
+        
+        .login-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            background: #ff4444;
+            color: #fff;
+            padding: 10px;
+            font-size: 12px;
+            text-align: center;
+            display: none;
+        }
+        
+        .error-message.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>MEME COIN MONITOR</h1>
+            <p>Enter credentials to access dashboard</p>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+        
+        <form class="login-form" id="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" autocomplete="username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" required>
+            </div>
+            
+            <button type="submit" class="login-btn" id="login-btn">LOGIN</button>
+        </form>
+    </div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+            const loginBtn = document.getElementById('login-btn');
+            
+            errorDiv.classList.remove('visible');
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'AUTHENTICATING...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.data?.success) {
+                    // Redirect to dashboard
+                    window.location.href = '/dashboard/';
+                } else {
+                    errorDiv.textContent = data.detail || 'Invalid credentials';
+                    errorDiv.classList.add('visible');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+                errorDiv.classList.add('visible');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'LOGIN';
+            }
+        });
+        
+        // Check if already logged in
+        async function checkSession() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/session`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.data?.authenticated) {
+                    window.location.href = '/dashboard/';
+                }
+            } catch (error) {
+                // Ignore - not logged in
+            }
+        }
+        
+        checkSession();
+    </script>
+</body>
+</html>

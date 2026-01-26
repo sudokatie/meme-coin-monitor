@@ -9,6 +9,7 @@ solana==0.32.0
 base58==2.1.1
 fastapi==0.109.0
 uvicorn==0.27.0
+bcrypt==4.1.2
 
 # Development
 pytest==7.4.4

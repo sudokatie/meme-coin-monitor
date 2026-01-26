@@ -14,9 +14,9 @@ ingestion:
     base_url: https://api.dexscreener.com
     rate_limit_per_minute: 60
   solana_rpc:
+    # Using Helius for better rate limits
+    # Set via SOLANA_RPC_URL env var or local.yaml
     endpoint: https://api.mainnet-beta.solana.com
-    # For better rate limits, use Helius (free tier available):
-    # endpoint: https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
     timeout_seconds: 10
   pump_fun:
     enabled: false  # Disabled - Cloudflare blocking API requests

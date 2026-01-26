@@ -1,11 +1,10 @@
 // Meme Coin Monitor Dashboard
 
-// Use same origin if served from API, otherwise use default API port
-const API_BASE = window.location.port === '8080' 
-    ? window.location.origin 
-    : 'http://' + window.location.hostname + ':8080';
+// Use same origin for API calls (auth cookies need same origin)
+const API_BASE = window.location.origin;
 let isConnected = false;
 let refreshInterval = null;
+let currentUsername = null;
 
 // DOM Elements
 const connectionStatus = document.getElementById('connection-status');
@@ -14,12 +13,20 @@ const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check authentication first
+    const authenticated = await checkAuthentication();
+    if (!authenticated) {
+        window.location.href = '/login';
+        return;
+    }
+    
     // Show API URL in footer
     document.getElementById('api-url').textContent = API_BASE;
     
     initTabs();
     initEventListeners();
+    initLogout();
     checkConnection();
     loadAllData();
     
@@ -32,6 +39,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 30000);
 });
+
+// Authentication
+async function checkAuthentication() {
+    try {
+        const response = await fetch(`${API_BASE}/auth/session`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.data?.authenticated) {
+            currentUsername = data.data.username;
+            const userSpan = document.getElementById('current-user');
+            if (userSpan) {
+                userSpan.textContent = currentUsername;
+            }
+            return true;
+        }
+    } catch (error) {
+        console.error('Auth check failed:', error);
+    }
+    return false;
+}
+
+function initLogout() {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            window.location.href = '/login';
+        });
+    }
+}
 
 // Tab Navigation
 function initTabs() {
@@ -71,6 +117,7 @@ async function apiCall(endpoint, options = {}) {
     try {
         const response = await fetch(url, {
             ...options,
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
@@ -78,6 +125,12 @@ async function apiCall(endpoint, options = {}) {
         });
         
         console.log('Response status:', response.status);
+        
+        // Handle auth failures
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return null;
+        }
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);

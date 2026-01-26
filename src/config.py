@@ -201,6 +201,9 @@ def load_config(config_path: Path | str | None = None) -> Config:
     """
     Load configuration from YAML file with environment overrides.
 
+    Loads default.yaml first, then merges local.yaml if present.
+    Environment variables override both.
+
     Args:
         config_path: Path to YAML config file. If None, uses config/default.yaml
 
@@ -223,6 +226,14 @@ def load_config(config_path: Path | str | None = None) -> Config:
 
     with open(config_path) as f:
         config_dict = yaml.safe_load(f) or {}
+
+    # Load local.yaml overrides if present
+    local_config_path = config_path.parent / "local.yaml"
+    if local_config_path.exists():
+        logger.info(f"Loading local overrides from {local_config_path}")
+        with open(local_config_path) as f:
+            local_dict = yaml.safe_load(f) or {}
+        config_dict = _deep_merge(config_dict, local_dict)
 
     config_dict = _apply_env_overrides(config_dict)
 

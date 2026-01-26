@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from src.config import DatabaseConfig
 from src.storage.models import Base
+from src.auth.models import Base as AuthBase
 
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class Database:
 
         async with self._engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(AuthBase.metadata.create_all)
 
         logger.info("Database initialized successfully")
 
