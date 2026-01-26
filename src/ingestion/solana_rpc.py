@@ -232,8 +232,11 @@ class SolanaRpcClient:
             holders: list[HolderInfo] = []
             for account in response.value[:limit]:
                 if account.amount and int(account.amount.amount) > 0:
+                    # Convert address to Pubkey for get_account_info
+                    account_pubkey = Pubkey.from_string(str(account.address))
+                    await self._rate_limit()
                     holder_response = await client.get_account_info(
-                        str(account.address),
+                        account_pubkey,
                         commitment=Commitment("confirmed"),
                     )
 
