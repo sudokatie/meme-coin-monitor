@@ -55,11 +55,8 @@
                     <h2>RECENT ALERTS</h2>
                     <div class="filter-pills" id="alert-pills">
                         <button class="pill active" data-filter="">All</button>
-                        <button class="pill" data-filter="high_risk">High Risk</button>
-                        <button class="pill" data-filter="rug_pull">Rug Pull</button>
-                        <button class="pill" data-filter="honeypot">Honeypot</button>
-                        <button class="pill" data-filter="whale_dump">Whale Dump</button>
-                        <button class="pill" data-filter="wash_trading">Wash Trading</button>
+                        <button class="pill" data-filter="RUG_WARNING">Rug Warning</button>
+                        <button class="pill" data-filter="OPPORTUNITY">Opportunity</button>
                     </div>
                     <div id="recent-alerts" class="alert-list">
                         <div class="loading">Loading...</div>
@@ -141,11 +138,8 @@
                     <div class="controls">
                         <select id="alert-filter">
                             <option value="">ALL TYPES</option>
-                            <option value="rug_pull">RUG PULL</option>
-                            <option value="honeypot">HONEYPOT</option>
-                            <option value="whale_dump">WHALE DUMP</option>
-                            <option value="wash_trading">WASH TRADING</option>
-                            <option value="high_risk">HIGH RISK</option>
+                            <option value="RUG_WARNING">RUG WARNING</option>
+                            <option value="OPPORTUNITY">OPPORTUNITY</option>
                         </select>
                         <button id="refresh-alerts" class="btn">REFRESH</button>
                     </div>
