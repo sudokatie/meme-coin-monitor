@@ -132,7 +132,14 @@
     </div>
     
     <script>
-        const API_BASE = window.location.origin;
+        // Detect base path from current URL (e.g., /apps/meme from /apps/meme/login)
+        const pathParts = window.location.pathname.split('/');
+        // Remove 'login' from end to get base path
+        if (pathParts[pathParts.length - 1] === 'login' || pathParts[pathParts.length - 1] === '') {
+            pathParts.pop();
+        }
+        const BASE_PATH = pathParts.join('/') || '';
+        const API_BASE = window.location.origin + BASE_PATH;
         
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -160,7 +167,7 @@
                 
                 if (response.ok && data.data?.success) {
                     // Redirect to dashboard
-                    window.location.href = '/dashboard/';
+                    window.location.href = BASE_PATH + '/dashboard/';
                 } else {
                     errorDiv.textContent = data.detail || 'Invalid credentials';
                     errorDiv.classList.add('visible');
@@ -183,7 +190,7 @@
                 const data = await response.json();
                 
                 if (data.data?.authenticated) {
-                    window.location.href = '/dashboard/';
+                    window.location.href = BASE_PATH + '/dashboard/';
                 }
             } catch (error) {
                 // Ignore - not logged in

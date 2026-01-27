@@ -1,7 +1,12 @@
 // Meme Coin Monitor Dashboard
 
+// Detect base path from current URL (e.g., /apps/meme from /apps/meme/dashboard/)
+const pathParts = window.location.pathname.split('/');
+// Find 'dashboard' in path and get everything before it
+const dashIdx = pathParts.indexOf('dashboard');
+const BASE_PATH = dashIdx > 0 ? pathParts.slice(0, dashIdx).join('/') : '';
 // Use same origin for API calls (auth cookies need same origin)
-const API_BASE = window.location.origin;
+const API_BASE = window.location.origin + BASE_PATH;
 let isConnected = false;
 let refreshInterval = null;
 let currentUsername = null;
@@ -17,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication first
     const authenticated = await checkAuthentication();
     if (!authenticated) {
-        window.location.href = '/login';
+        window.location.href = BASE_PATH + '/login';
         return;
     }
     
@@ -74,7 +79,7 @@ function initLogout() {
             } catch (error) {
                 console.error('Logout error:', error);
             }
-            window.location.href = '/login';
+            window.location.href = BASE_PATH + '/login';
         });
     }
 }
@@ -128,7 +133,7 @@ async function apiCall(endpoint, options = {}) {
         
         // Handle auth failures
         if (response.status === 401) {
-            window.location.href = '/login';
+            window.location.href = BASE_PATH + '/login';
             return null;
         }
         
