@@ -291,4 +291,8 @@ def setup_logging(config: LoggingConfig) -> None:
     file_handler.setFormatter(logging.Formatter(config.format))
     root_logger.addHandler(file_handler)
 
+    # Silence httpx to prevent API keys from being logged in URLs
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
     logger.info(f"Logging configured: level={config.level}, file={config.file}")
