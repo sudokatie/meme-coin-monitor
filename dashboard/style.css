@@ -371,6 +371,37 @@ input[type="text"]::placeholder {
     background: rgba(158, 206, 106, 0.15);
 }
 
+/* Filter Pills */
+.filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.pill {
+    background: var(--bg);
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+}
+
+.pill:hover {
+    color: var(--text);
+    background: var(--bg-highlight);
+}
+
+.pill.active {
+    color: var(--bg);
+    background: var(--accent);
+}
+
 /* Alert Lists */
 .alert-list,
 .alert-list-full {

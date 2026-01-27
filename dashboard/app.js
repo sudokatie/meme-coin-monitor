@@ -209,6 +209,9 @@ function initTabs() {
     });
 }
 
+// Current filter for recent alerts
+let recentAlertsFilter = '';
+
 // Event Listeners
 function initEventListeners() {
     document.getElementById('refresh-risky')?.addEventListener('click', loadRiskyTokens);
@@ -222,6 +225,24 @@ function initEventListeners() {
     // Enter key for lookup
     document.getElementById('token-address')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') lookupToken();
+    });
+    
+    // Alert filter pills
+    initAlertPills();
+}
+
+function initAlertPills() {
+    const pills = document.querySelectorAll('#alert-pills .pill');
+    pills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            // Update active state
+            pills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            
+            // Update filter and reload
+            recentAlertsFilter = pill.dataset.filter || '';
+            loadRecentAlerts();
+        });
     });
 }
 
@@ -321,7 +342,10 @@ async function loadOverviewStats() {
 async function loadRecentAlerts() {
     const container = document.getElementById('recent-alerts');
     try {
-        const result = await apiCall('/alerts?limit=10');
+        const url = recentAlertsFilter 
+            ? `/alerts?type=${recentAlertsFilter}&limit=10`
+            : '/alerts?limit=10';
+        const result = await apiCall(url);
         const alerts = result.data || [];
         
         if (alerts.length === 0) {
