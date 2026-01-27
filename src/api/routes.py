@@ -180,13 +180,13 @@ async def get_token_score(address: str) -> dict[str, Any]:
 
 @router.get("/tokens/risky")
 async def get_risky_tokens(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=100, ge=1, le=10000),
 ) -> dict[str, Any]:
     """
     Get list of high-risk tokens.
 
     Args:
-        limit: Maximum number of tokens to return
+        limit: Maximum number of tokens to return (max 10,000)
     """
     state = get_app_state()
     tokens = []
@@ -213,13 +213,13 @@ async def get_risky_tokens(
 
 @router.get("/tokens/opportunities")
 async def get_opportunity_tokens(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=100, ge=1, le=10000),
 ) -> dict[str, Any]:
     """
     Get list of opportunity tokens.
 
     Args:
-        limit: Maximum number of tokens to return
+        limit: Maximum number of tokens to return (max 10,000)
     """
     state = get_app_state()
     tokens = []
@@ -248,7 +248,7 @@ async def get_opportunity_tokens(
 async def get_alerts(
     token: str | None = Query(default=None),
     alert_type: str | None = Query(default=None, alias="type"),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=100, ge=1, le=10000),
 ) -> dict[str, Any]:
     """
     Query alerts.
@@ -256,7 +256,7 @@ async def get_alerts(
     Args:
         token: Filter by token address
         alert_type: Filter by alert type
-        limit: Maximum alerts to return
+        limit: Maximum alerts to return (max 10,000)
     """
     state = get_app_state()
     alerts_list = []

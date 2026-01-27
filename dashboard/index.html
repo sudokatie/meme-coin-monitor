@@ -26,6 +26,7 @@
             <button class="tab" data-tab="opportunities">Opportunities</button>
             <button class="tab" data-tab="alerts">Alerts</button>
             <button class="tab" data-tab="lookup">Lookup</button>
+            <button class="tab" data-tab="settings">Settings</button>
         </nav>
 
         <main>
@@ -167,6 +168,79 @@
                         <button id="watch-remove-btn" class="btn btn-danger">REMOVE</button>
                     </div>
                     <div id="watchlist-status"></div>
+                </div>
+            </section>
+
+            <!-- Settings Tab -->
+            <section id="settings" class="tab-content">
+                <div class="panel">
+                    <h2>DISPLAY LIMITS</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 13px;">
+                        Configure how many items to load in each view. Higher limits may slow down the interface.
+                    </p>
+                    
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label for="limit-risky">Risky Tokens</label>
+                            <select id="limit-risky">
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="250">250</option>
+                                <option value="500">500</option>
+                                <option value="1000">1,000</option>
+                                <option value="2500">2,500</option>
+                                <option value="5000">5,000</option>
+                                <option value="10000">10,000</option>
+                            </select>
+                            <span class="setting-warning" id="warn-risky"></span>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="limit-opportunities">Opportunities</label>
+                            <select id="limit-opportunities">
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="250">250</option>
+                                <option value="500">500</option>
+                                <option value="1000">1,000</option>
+                                <option value="2500">2,500</option>
+                                <option value="5000">5,000</option>
+                                <option value="10000">10,000</option>
+                            </select>
+                            <span class="setting-warning" id="warn-opportunities"></span>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="limit-alerts">Alerts</label>
+                            <select id="limit-alerts">
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="250">250</option>
+                                <option value="500">500</option>
+                                <option value="1000">1,000</option>
+                                <option value="2500">2,500</option>
+                                <option value="5000">5,000</option>
+                                <option value="10000">10,000</option>
+                            </select>
+                            <span class="setting-warning" id="warn-alerts"></span>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 24px;">
+                        <button id="save-settings" class="btn">Save Settings</button>
+                        <button id="reset-settings" class="btn" style="margin-left: 12px;">Reset to Defaults</button>
+                    </div>
+                    <div id="settings-status" style="margin-top: 12px;"></div>
+                </div>
+                
+                <div class="panel">
+                    <h2>PERFORMANCE NOTES</h2>
+                    <div style="color: var(--text-muted); font-size: 13px; line-height: 1.8;">
+                        <p><strong style="color: var(--text);">50-100:</strong> Fast, recommended for regular use</p>
+                        <p><strong style="color: var(--text);">250-500:</strong> Slightly slower, good for deeper analysis</p>
+                        <p><strong style="color: var(--warning);">1,000-2,500:</strong> May take a few seconds to load</p>
+                        <p><strong style="color: var(--danger);">5,000-10,000:</strong> Can be slow, use for exports or full scans</p>
+                    </div>
                 </div>
             </section>
         </main>

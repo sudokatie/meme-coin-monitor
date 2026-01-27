@@ -11,6 +11,115 @@ let isConnected = false;
 let refreshInterval = null;
 let currentUsername = null;
 
+// Settings with defaults
+const DEFAULT_SETTINGS = {
+    limitRisky: 100,
+    limitOpportunities: 100,
+    limitAlerts: 100
+};
+
+let settings = { ...DEFAULT_SETTINGS };
+
+// Load settings from localStorage
+function loadSettings() {
+    try {
+        const saved = localStorage.getItem('memeMonitorSettings');
+        if (saved) {
+            settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        }
+    } catch (e) {
+        console.error('Failed to load settings:', e);
+    }
+    return settings;
+}
+
+// Save settings to localStorage
+function saveSettings() {
+    try {
+        localStorage.setItem('memeMonitorSettings', JSON.stringify(settings));
+    } catch (e) {
+        console.error('Failed to save settings:', e);
+    }
+}
+
+// Update warning text based on limit value
+function updateLimitWarning(selectId, warnId) {
+    const select = document.getElementById(selectId);
+    const warn = document.getElementById(warnId);
+    if (!select || !warn) return;
+    
+    const value = parseInt(select.value);
+    warn.className = 'setting-warning';
+    
+    if (value >= 5000) {
+        warn.textContent = 'May be slow to load';
+        warn.classList.add('warn-high');
+    } else if (value >= 1000) {
+        warn.textContent = 'Could take a few seconds';
+        warn.classList.add('warn-medium');
+    } else {
+        warn.textContent = '';
+    }
+}
+
+// Initialize settings UI
+function initSettings() {
+    loadSettings();
+    
+    // Set select values from settings
+    const riskySelect = document.getElementById('limit-risky');
+    const oppSelect = document.getElementById('limit-opportunities');
+    const alertsSelect = document.getElementById('limit-alerts');
+    
+    if (riskySelect) riskySelect.value = settings.limitRisky;
+    if (oppSelect) oppSelect.value = settings.limitOpportunities;
+    if (alertsSelect) alertsSelect.value = settings.limitAlerts;
+    
+    // Add change listeners for warnings
+    riskySelect?.addEventListener('change', () => updateLimitWarning('limit-risky', 'warn-risky'));
+    oppSelect?.addEventListener('change', () => updateLimitWarning('limit-opportunities', 'warn-opportunities'));
+    alertsSelect?.addEventListener('change', () => updateLimitWarning('limit-alerts', 'warn-alerts'));
+    
+    // Initial warning update
+    updateLimitWarning('limit-risky', 'warn-risky');
+    updateLimitWarning('limit-opportunities', 'warn-opportunities');
+    updateLimitWarning('limit-alerts', 'warn-alerts');
+    
+    // Save button
+    document.getElementById('save-settings')?.addEventListener('click', () => {
+        settings.limitRisky = parseInt(riskySelect?.value || 100);
+        settings.limitOpportunities = parseInt(oppSelect?.value || 100);
+        settings.limitAlerts = parseInt(alertsSelect?.value || 100);
+        saveSettings();
+        
+        const status = document.getElementById('settings-status');
+        if (status) {
+            status.innerHTML = '<div class="success-msg">Settings saved</div>';
+            setTimeout(() => { status.innerHTML = ''; }, 3000);
+        }
+    });
+    
+    // Reset button
+    document.getElementById('reset-settings')?.addEventListener('click', () => {
+        settings = { ...DEFAULT_SETTINGS };
+        saveSettings();
+        
+        if (riskySelect) riskySelect.value = DEFAULT_SETTINGS.limitRisky;
+        if (oppSelect) oppSelect.value = DEFAULT_SETTINGS.limitOpportunities;
+        if (alertsSelect) alertsSelect.value = DEFAULT_SETTINGS.limitAlerts;
+        
+        updateLimitWarning('limit-risky', 'warn-risky');
+        updateLimitWarning('limit-opportunities', 'warn-opportunities');
+        updateLimitWarning('limit-alerts', 'warn-alerts');
+        
+        const status = document.getElementById('settings-status');
+        if (status) {
+            status.innerHTML = '<div class="success-msg">Settings reset to defaults</div>';
+            setTimeout(() => { status.innerHTML = ''; }, 3000);
+        }
+    });
+}
+
 // DOM Elements
 const connectionStatus = document.getElementById('connection-status');
 const lastUpdate = document.getElementById('last-update');
@@ -32,6 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initTabs();
     initEventListeners();
     initLogout();
+    initSettings();
     checkConnection();
     loadAllData();
     
@@ -193,9 +303,9 @@ async function loadAllData() {
 async function loadOverviewStats() {
     try {
         const [risky, opportunities, alerts] = await Promise.all([
-            apiCall('/tokens/risky?limit=100'),
-            apiCall('/tokens/opportunities?limit=100'),
-            apiCall('/alerts?limit=100')
+            apiCall(`/tokens/risky?limit=${settings.limitRisky}`),
+            apiCall(`/tokens/opportunities?limit=${settings.limitOpportunities}`),
+            apiCall(`/alerts?limit=${settings.limitAlerts}`)
         ]);
         
         document.getElementById('risky-count').textContent = risky.data?.length || 0;
@@ -264,7 +374,7 @@ async function loadRiskyTokens() {
     tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
     
     try {
-        const result = await apiCall('/tokens/risky?limit=50');
+        const result = await apiCall(`/tokens/risky?limit=${settings.limitRisky}`);
         const tokens = result.data || [];
         
         if (tokens.length === 0) {
@@ -283,7 +393,7 @@ async function loadOpportunityTokens() {
     tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
     
     try {
-        const result = await apiCall('/tokens/opportunities?limit=50');
+        const result = await apiCall(`/tokens/opportunities?limit=${settings.limitOpportunities}`);
         const tokens = result.data || [];
         
         if (tokens.length === 0) {
@@ -304,7 +414,9 @@ async function loadAllAlerts() {
     container.innerHTML = '<div class="loading">Loading...</div>';
     
     try {
-        const url = filterType ? `/alerts?type=${filterType}&limit=100` : '/alerts?limit=100';
+        const url = filterType 
+            ? `/alerts?type=${filterType}&limit=${settings.limitAlerts}` 
+            : `/alerts?limit=${settings.limitAlerts}`;
         const result = await apiCall(url);
         const alerts = result.data || [];
         
