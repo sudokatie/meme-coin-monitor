@@ -713,6 +713,46 @@ footer {
     .token-table td {
         padding: 12px 14px;
     }
+    
+    /* Rugs tab mobile fixes */
+    .token-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .controls {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .controls select,
+    .controls .btn {
+        flex: 1;
+        min-width: 100px;
+    }
+    
+    .outcome-row {
+        flex-wrap: wrap;
+    }
+    
+    .outcome-label {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+    
+    .outcome-bar {
+        flex: 1;
+    }
+    
+    .rug-stat {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .rug-stat-value {
+        font-size: 24px;
+    }
 }
 
 /* ============================================ */
