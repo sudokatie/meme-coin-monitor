@@ -30,12 +30,18 @@ body {
     color: var(--text);
     font-size: 14px;
     line-height: 1.6;
+    overflow-x: hidden;
+}
+
+html {
+    overflow-x: hidden;
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
     padding: 32px 24px;
+    overflow-x: hidden;
 }
 
 /* Header */
@@ -131,6 +137,8 @@ header h1 span {
 
 .tab-content {
     display: none;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .tab-content.active {
@@ -143,6 +151,7 @@ header h1 span {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 28px;
+    max-width: 100%;
 }
 
 .stat-card {
@@ -177,6 +186,8 @@ header h1 span {
     border-radius: 16px;
     padding: 24px;
     margin-bottom: 20px;
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .panel h2 {
