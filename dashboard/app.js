@@ -680,7 +680,7 @@ tabs.forEach(tab => {
 
 async function loadMLStats() {
     try {
-        const response = await apiFetch('/reviews/stats');
+        const response = await apiCall('/reviews/stats');
         const stats = response.data;
         
         document.getElementById('ml-total').textContent = stats.total || 0;
@@ -728,7 +728,7 @@ async function loadReviews() {
         if (statusFilter) url += `&status=${statusFilter}`;
         if (outcomeFilter) url += `&outcome=${outcomeFilter}`;
         
-        const response = await apiFetch(url);
+        const response = await apiCall(url);
         const reviews = response.data || [];
         
         if (reviews.length === 0) {
@@ -799,7 +799,7 @@ function renderReviewRow(review) {
 
 async function exportReviewsCSV() {
     try {
-        const response = await apiFetch('/reviews/export/csv');
+        const response = await apiCall('/reviews/export/csv');
         const data = response.data;
         
         if (!data.rows || data.rows.length === 0) {
