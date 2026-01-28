@@ -446,3 +446,186 @@ async def create_pattern(pattern: PatternCreate) -> dict[str, Any]:
             "pattern_type": new_pattern.pattern_type,
             "created": True,
         })
+
+
+# --- Opportunity Review Endpoints (ML Training Data) ---
+
+
+@router.get("/reviews/stats")
+async def get_review_stats() -> dict[str, Any]:
+    """Get statistics on opportunity token outcomes."""
+    state = get_app_state()
+
+    if "database" not in state:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with state["database"].session() as session:
+        from src.storage.repositories import OpportunityReviewRepository
+        repo = OpportunityReviewRepository(session)
+        stats = await repo.get_stats()
+
+    return wrap_response(stats)
+
+
+@router.get("/reviews")
+async def get_reviews(
+    status: str | None = Query(default=None),  # pending_day1, pending_week1, completed
+    outcome: str | None = Query(default=None),  # SURVIVED, RUGGED, DEAD, MOONED
+    limit: int = Query(default=50, ge=1, le=500),
+) -> dict[str, Any]:
+    """
+    Get opportunity reviews.
+
+    Args:
+        status: Filter by review status (pending_day1, pending_week1, completed)
+        outcome: Filter by final outcome (SURVIVED, RUGGED, DEAD, MOONED)
+        limit: Maximum reviews to return
+    """
+    from datetime import datetime, timedelta, timezone
+
+    state = get_app_state()
+
+    if "database" not in state:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with state["database"].session() as session:
+        from src.storage.repositories import OpportunityReviewRepository
+        repo = OpportunityReviewRepository(session)
+
+        now = datetime.now(timezone.utc)
+
+        if status == "pending_day1":
+            day_ago = now - timedelta(days=1)
+            reviews = await repo.get_pending_day1_reviews(before=day_ago, limit=limit)
+        elif status == "pending_week1":
+            week_ago = now - timedelta(days=7)
+            reviews = await repo.get_pending_week1_reviews(before=week_ago, limit=limit)
+        elif status == "completed":
+            reviews = await repo.get_all_completed(limit=limit)
+        else:
+            reviews = await repo.get_recent(limit=limit)
+
+        # Filter by outcome if specified
+        if outcome:
+            reviews = [r for r in reviews if r.final_outcome == outcome.upper()]
+
+        reviews_list = [
+            {
+                "id": r.id,
+                "token_address": r.token_address,
+                "alert_id": r.alert_id,
+                "initial_timestamp": r.initial_timestamp.isoformat() if r.initial_timestamp else None,
+                "initial_price_usd": r.initial_price_usd,
+                "initial_market_cap": r.initial_market_cap,
+                "initial_liquidity_usd": r.initial_liquidity_usd,
+                "initial_holder_count": r.initial_holder_count,
+                "initial_risk_score": r.initial_risk_score,
+                "initial_opportunity_score": r.initial_opportunity_score,
+                "day1_reviewed": r.day1_reviewed,
+                "day1_timestamp": r.day1_timestamp.isoformat() if r.day1_timestamp else None,
+                "day1_price_usd": r.day1_price_usd,
+                "day1_price_change_pct": r.day1_price_change_pct,
+                "day1_rugged": r.day1_rugged,
+                "day1_rug_reason": r.day1_rug_reason,
+                "week1_reviewed": r.week1_reviewed,
+                "week1_timestamp": r.week1_timestamp.isoformat() if r.week1_timestamp else None,
+                "week1_price_usd": r.week1_price_usd,
+                "week1_price_change_pct": r.week1_price_change_pct,
+                "week1_rugged": r.week1_rugged,
+                "week1_rug_reason": r.week1_rug_reason,
+                "final_outcome": r.final_outcome,
+                "outcome_notes": r.outcome_notes,
+            }
+            for r in reviews
+        ]
+
+    return wrap_response(reviews_list)
+
+
+@router.get("/reviews/{review_id}")
+async def get_review(review_id: str) -> dict[str, Any]:
+    """Get a specific opportunity review."""
+    state = get_app_state()
+
+    if "database" not in state:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with state["database"].session() as session:
+        from src.storage.repositories import OpportunityReviewRepository
+        repo = OpportunityReviewRepository(session)
+        review = await repo.get_by_id(review_id)
+
+        if not review:
+            raise HTTPException(status_code=404, detail="Review not found")
+
+        return wrap_response({
+            "id": review.id,
+            "token_address": review.token_address,
+            "alert_id": review.alert_id,
+            "initial_timestamp": review.initial_timestamp.isoformat() if review.initial_timestamp else None,
+            "initial_price_usd": review.initial_price_usd,
+            "initial_market_cap": review.initial_market_cap,
+            "initial_liquidity_usd": review.initial_liquidity_usd,
+            "initial_holder_count": review.initial_holder_count,
+            "initial_risk_score": review.initial_risk_score,
+            "initial_opportunity_score": review.initial_opportunity_score,
+            "day1_reviewed": review.day1_reviewed,
+            "day1_timestamp": review.day1_timestamp.isoformat() if review.day1_timestamp else None,
+            "day1_price_usd": review.day1_price_usd,
+            "day1_market_cap": review.day1_market_cap,
+            "day1_liquidity_usd": review.day1_liquidity_usd,
+            "day1_holder_count": review.day1_holder_count,
+            "day1_risk_score": review.day1_risk_score,
+            "day1_price_change_pct": review.day1_price_change_pct,
+            "day1_rugged": review.day1_rugged,
+            "day1_rug_reason": review.day1_rug_reason,
+            "week1_reviewed": review.week1_reviewed,
+            "week1_timestamp": review.week1_timestamp.isoformat() if review.week1_timestamp else None,
+            "week1_price_usd": review.week1_price_usd,
+            "week1_market_cap": review.week1_market_cap,
+            "week1_liquidity_usd": review.week1_liquidity_usd,
+            "week1_holder_count": review.week1_holder_count,
+            "week1_risk_score": review.week1_risk_score,
+            "week1_price_change_pct": review.week1_price_change_pct,
+            "week1_rugged": review.week1_rugged,
+            "week1_rug_reason": review.week1_rug_reason,
+            "final_outcome": review.final_outcome,
+            "outcome_notes": review.outcome_notes,
+        })
+
+
+@router.get("/reviews/export/csv")
+async def export_reviews_csv() -> dict[str, Any]:
+    """Export completed reviews as CSV data for ML training."""
+    state = get_app_state()
+
+    if "database" not in state:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with state["database"].session() as session:
+        from src.storage.repositories import OpportunityReviewRepository
+        repo = OpportunityReviewRepository(session)
+        reviews = await repo.get_all_completed(limit=10000)
+
+        # Return as structured data (caller can convert to CSV)
+        rows = []
+        for r in reviews:
+            rows.append({
+                "token_address": r.token_address,
+                "initial_price": r.initial_price_usd,
+                "initial_mcap": r.initial_market_cap,
+                "initial_liquidity": r.initial_liquidity_usd,
+                "initial_holders": r.initial_holder_count,
+                "initial_risk": r.initial_risk_score,
+                "initial_opportunity": r.initial_opportunity_score,
+                "day1_price_change": r.day1_price_change_pct,
+                "day1_rugged": r.day1_rugged,
+                "week1_price_change": r.week1_price_change_pct,
+                "week1_rugged": r.week1_rugged,
+                "final_outcome": r.final_outcome,
+            })
+
+    return wrap_response({
+        "count": len(rows),
+        "rows": rows,
+    })

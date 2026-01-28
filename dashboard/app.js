@@ -673,3 +673,188 @@ tabs.forEach(tab => {
         if (targetId === 'alerts') loadAllAlerts();
     });
 });
+
+// ============================================
+// ML Data Tab Functions
+// ============================================
+
+async function loadMLStats() {
+    try {
+        const response = await apiFetch('/reviews/stats');
+        const stats = response.data;
+        
+        document.getElementById('ml-total').textContent = stats.total || 0;
+        document.getElementById('ml-pending-day1').textContent = stats.pending_day1 || 0;
+        document.getElementById('ml-pending-week1').textContent = stats.pending_week1 || 0;
+        document.getElementById('ml-completed').textContent = stats.completed || 0;
+        document.getElementById('rugged-day1').textContent = stats.rugged_day1 || 0;
+        document.getElementById('rugged-week1').textContent = stats.rugged_week1 || 0;
+        
+        // Update outcome bars
+        const outcomes = stats.outcomes || {};
+        const total = stats.completed || 1;
+        
+        const survived = outcomes.SURVIVED || 0;
+        const rugged = outcomes.RUGGED || 0;
+        const dead = outcomes.DEAD || 0;
+        const mooned = outcomes.MOONED || 0;
+        
+        document.getElementById('count-survived').textContent = survived;
+        document.getElementById('count-rugged').textContent = rugged;
+        document.getElementById('count-dead').textContent = dead;
+        document.getElementById('count-mooned').textContent = mooned;
+        
+        // Set bar widths
+        const maxCount = Math.max(survived, rugged, dead, mooned, 1);
+        document.getElementById('bar-survived').style.width = `${(survived / maxCount) * 100}%`;
+        document.getElementById('bar-rugged').style.width = `${(rugged / maxCount) * 100}%`;
+        document.getElementById('bar-dead').style.width = `${(dead / maxCount) * 100}%`;
+        document.getElementById('bar-mooned').style.width = `${(mooned / maxCount) * 100}%`;
+        
+    } catch (error) {
+        console.error('Failed to load ML stats:', error);
+    }
+}
+
+async function loadReviews() {
+    const tbody = document.getElementById('reviews-tbody');
+    const statusFilter = document.getElementById('review-filter').value;
+    const outcomeFilter = document.getElementById('outcome-filter').value;
+    
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+    
+    try {
+        let url = '/reviews?limit=100';
+        if (statusFilter) url += `&status=${statusFilter}`;
+        if (outcomeFilter) url += `&outcome=${outcomeFilter}`;
+        
+        const response = await apiFetch(url);
+        const reviews = response.data || [];
+        
+        if (reviews.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">No reviews found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = reviews.map(r => renderReviewRow(r)).join('');
+        
+    } catch (error) {
+        console.error('Failed to load reviews:', error);
+        tbody.innerHTML = '<tr><td colspan="5" class="error">Failed to load reviews</td></tr>';
+    }
+}
+
+function renderReviewRow(review) {
+    const shortAddr = shortenAddress(review.token_address);
+    
+    // Initial price
+    const initialPrice = review.initial_price_usd ? 
+        '$' + parseFloat(review.initial_price_usd).toFixed(8) : '--';
+    
+    // Day 1 status
+    let day1Status = '<span class="status-pending">PENDING</span>';
+    if (review.day1_reviewed) {
+        if (review.day1_rugged) {
+            day1Status = `<span class="status-rugged">RUGGED</span>`;
+        } else {
+            const change = review.day1_price_change_pct;
+            const changeClass = change && parseFloat(change) >= 0 ? 'positive' : 'negative';
+            day1Status = `<span class="status-ok ${changeClass}">${change ? change + '%' : 'OK'}</span>`;
+        }
+    }
+    
+    // Week 1 status
+    let week1Status = '<span class="status-pending">PENDING</span>';
+    if (review.week1_reviewed) {
+        if (review.week1_rugged) {
+            week1Status = `<span class="status-rugged">RUGGED</span>`;
+        } else {
+            const change = review.week1_price_change_pct;
+            const changeClass = change && parseFloat(change) >= 0 ? 'positive' : 'negative';
+            week1Status = `<span class="status-ok ${changeClass}">${change ? change + '%' : 'OK'}</span>`;
+        }
+    }
+    
+    // Final outcome
+    let outcomeClass = '';
+    switch (review.final_outcome) {
+        case 'SURVIVED': outcomeClass = 'outcome-survived'; break;
+        case 'RUGGED': outcomeClass = 'outcome-rugged'; break;
+        case 'DEAD': outcomeClass = 'outcome-dead'; break;
+        case 'MOONED': outcomeClass = 'outcome-mooned'; break;
+    }
+    const outcome = review.final_outcome ? 
+        `<span class="${outcomeClass}">${review.final_outcome}</span>` : '--';
+    
+    return `
+        <tr>
+            <td title="${review.token_address}" style="cursor: pointer;" onclick="copyAddress('${review.token_address}')">${shortAddr}</td>
+            <td>${initialPrice}</td>
+            <td>${day1Status}</td>
+            <td>${week1Status}</td>
+            <td>${outcome}</td>
+        </tr>
+    `;
+}
+
+async function exportReviewsCSV() {
+    try {
+        const response = await apiFetch('/reviews/export/csv');
+        const data = response.data;
+        
+        if (!data.rows || data.rows.length === 0) {
+            alert('No completed reviews to export');
+            return;
+        }
+        
+        // Convert to CSV
+        const headers = Object.keys(data.rows[0]);
+        const csvRows = [headers.join(',')];
+        
+        for (const row of data.rows) {
+            const values = headers.map(h => {
+                const val = row[h];
+                if (val === null || val === undefined) return '';
+                if (typeof val === 'string' && val.includes(',')) return `"${val}"`;
+                return val;
+            });
+            csvRows.push(values.join(','));
+        }
+        
+        const csv = csvRows.join('\n');
+        
+        // Download
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `opportunity-reviews-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+    } catch (error) {
+        console.error('Failed to export CSV:', error);
+        alert('Failed to export CSV');
+    }
+}
+
+// Event listeners for ML Data tab
+document.getElementById('refresh-reviews')?.addEventListener('click', () => {
+    loadMLStats();
+    loadReviews();
+});
+
+document.getElementById('review-filter')?.addEventListener('change', loadReviews);
+document.getElementById('outcome-filter')?.addEventListener('change', loadReviews);
+document.getElementById('export-csv')?.addEventListener('click', exportReviewsCSV);
+
+// Add ML Data tab to tab switch handler
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const targetId = tab.dataset.tab;
+        if (targetId === 'ml-data') {
+            loadMLStats();
+            loadReviews();
+        }
+    });
+});

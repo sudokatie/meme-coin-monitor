@@ -7,7 +7,7 @@ from typing import Sequence
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.storage.models import Alert, Pattern, Snapshot, Token, Wallet
+from src.storage.models import Alert, OpportunityReview, Pattern, Snapshot, Token, Wallet
 
 
 logger = logging.getLogger(__name__)
@@ -281,3 +281,209 @@ class WalletRepository:
     async def get_scammers(self) -> Sequence[Wallet]:
         """Get wallets flagged as known scammers."""
         return await self.get_flagged("scammer")
+
+
+class OpportunityReviewRepository:
+    """Repository for OpportunityReview operations - tracks follow-ups for ML."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(self, review: OpportunityReview) -> OpportunityReview:
+        """Create a new opportunity review."""
+        self._session.add(review)
+        return review
+
+    async def get_by_token(self, token_address: str) -> OpportunityReview | None:
+        """Get the review for a token."""
+        result = await self._session.execute(
+            select(OpportunityReview).where(
+                OpportunityReview.token_address == token_address
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_id(self, review_id: str) -> OpportunityReview | None:
+        """Get a review by ID."""
+        result = await self._session.execute(
+            select(OpportunityReview).where(OpportunityReview.id == review_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_pending_day1_reviews(
+        self, before: datetime, limit: int = 50
+    ) -> Sequence[OpportunityReview]:
+        """Get reviews that need 1-day follow-up (created > 24h ago, not yet reviewed)."""
+        result = await self._session.execute(
+            select(OpportunityReview)
+            .where(OpportunityReview.day1_reviewed == False)
+            .where(OpportunityReview.initial_timestamp <= before)
+            .order_by(OpportunityReview.initial_timestamp.asc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def get_pending_week1_reviews(
+        self, before: datetime, limit: int = 50
+    ) -> Sequence[OpportunityReview]:
+        """Get reviews that need 1-week follow-up (created > 7d ago, day1 done, week1 not done)."""
+        result = await self._session.execute(
+            select(OpportunityReview)
+            .where(OpportunityReview.day1_reviewed == True)
+            .where(OpportunityReview.week1_reviewed == False)
+            .where(OpportunityReview.initial_timestamp <= before)
+            .order_by(OpportunityReview.initial_timestamp.asc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def update_day1_review(
+        self,
+        review_id: str,
+        timestamp: datetime,
+        price_usd: str | None,
+        market_cap: str | None,
+        liquidity_usd: str | None,
+        holder_count: int | None,
+        risk_score: int | None,
+        price_change_pct: str | None,
+        rugged: bool,
+        rug_reason: str | None = None,
+    ) -> bool:
+        """Update day 1 review data."""
+        result = await self._session.execute(
+            update(OpportunityReview)
+            .where(OpportunityReview.id == review_id)
+            .values(
+                day1_reviewed=True,
+                day1_timestamp=timestamp,
+                day1_price_usd=price_usd,
+                day1_market_cap=market_cap,
+                day1_liquidity_usd=liquidity_usd,
+                day1_holder_count=holder_count,
+                day1_risk_score=risk_score,
+                day1_price_change_pct=price_change_pct,
+                day1_rugged=rugged,
+                day1_rug_reason=rug_reason,
+            )
+        )
+        return result.rowcount > 0
+
+    async def update_week1_review(
+        self,
+        review_id: str,
+        timestamp: datetime,
+        price_usd: str | None,
+        market_cap: str | None,
+        liquidity_usd: str | None,
+        holder_count: int | None,
+        risk_score: int | None,
+        price_change_pct: str | None,
+        rugged: bool,
+        rug_reason: str | None = None,
+        final_outcome: str | None = None,
+        outcome_notes: str | None = None,
+    ) -> bool:
+        """Update week 1 review data and set final outcome."""
+        result = await self._session.execute(
+            update(OpportunityReview)
+            .where(OpportunityReview.id == review_id)
+            .values(
+                week1_reviewed=True,
+                week1_timestamp=timestamp,
+                week1_price_usd=price_usd,
+                week1_market_cap=market_cap,
+                week1_liquidity_usd=liquidity_usd,
+                week1_holder_count=holder_count,
+                week1_risk_score=risk_score,
+                week1_price_change_pct=price_change_pct,
+                week1_rugged=rugged,
+                week1_rug_reason=rug_reason,
+                final_outcome=final_outcome,
+                outcome_notes=outcome_notes,
+            )
+        )
+        return result.rowcount > 0
+
+    async def get_all_completed(self, limit: int = 500) -> Sequence[OpportunityReview]:
+        """Get all completed reviews (for ML training data export)."""
+        result = await self._session.execute(
+            select(OpportunityReview)
+            .where(OpportunityReview.week1_reviewed == True)
+            .order_by(OpportunityReview.initial_timestamp.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def get_stats(self) -> dict:
+        """Get statistics on opportunity outcomes."""
+        from sqlalchemy import func
+        
+        # Total reviews
+        total_result = await self._session.execute(
+            select(func.count(OpportunityReview.id))
+        )
+        total = total_result.scalar() or 0
+        
+        # Pending day1
+        pending_day1_result = await self._session.execute(
+            select(func.count(OpportunityReview.id))
+            .where(OpportunityReview.day1_reviewed == False)
+        )
+        pending_day1 = pending_day1_result.scalar() or 0
+        
+        # Pending week1
+        pending_week1_result = await self._session.execute(
+            select(func.count(OpportunityReview.id))
+            .where(OpportunityReview.day1_reviewed == True)
+            .where(OpportunityReview.week1_reviewed == False)
+        )
+        pending_week1 = pending_week1_result.scalar() or 0
+        
+        # Completed
+        completed_result = await self._session.execute(
+            select(func.count(OpportunityReview.id))
+            .where(OpportunityReview.week1_reviewed == True)
+        )
+        completed = completed_result.scalar() or 0
+        
+        # Rugged at day1
+        rugged_day1_result = await self._session.execute(
+            select(func.count(OpportunityReview.id))
+            .where(OpportunityReview.day1_rugged == True)
+        )
+        rugged_day1 = rugged_day1_result.scalar() or 0
+        
+        # Rugged at week1
+        rugged_week1_result = await self._session.execute(
+            select(func.count(OpportunityReview.id))
+            .where(OpportunityReview.week1_rugged == True)
+        )
+        rugged_week1 = rugged_week1_result.scalar() or 0
+        
+        # Outcome distribution
+        outcome_result = await self._session.execute(
+            select(OpportunityReview.final_outcome, func.count(OpportunityReview.id))
+            .where(OpportunityReview.final_outcome != None)
+            .group_by(OpportunityReview.final_outcome)
+        )
+        outcomes = {row[0]: row[1] for row in outcome_result.all()}
+        
+        return {
+            "total": total,
+            "pending_day1": pending_day1,
+            "pending_week1": pending_week1,
+            "completed": completed,
+            "rugged_day1": rugged_day1,
+            "rugged_week1": rugged_week1,
+            "outcomes": outcomes,
+        }
+
+    async def get_recent(self, limit: int = 50) -> Sequence[OpportunityReview]:
+        """Get recent reviews (all states)."""
+        result = await self._session.execute(
+            select(OpportunityReview)
+            .order_by(OpportunityReview.initial_timestamp.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()

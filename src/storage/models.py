@@ -129,3 +129,62 @@ class Wallet(Base):
     def __repr__(self) -> str:
         labels_str = ", ".join(self.labels[:2]) if self.labels else "no labels"
         return f"<Wallet {self.address[:8]}... ({labels_str})>"
+
+
+class OpportunityReview(Base):
+    """Tracks follow-up reviews of opportunity tokens for ML training data."""
+
+    __tablename__ = "opportunity_reviews"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=generate_uuid
+    )
+    token_address: Mapped[str] = mapped_column(
+        String(64), nullable=False, index=True
+    )
+    alert_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    
+    # Initial state when opportunity was flagged
+    initial_timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    initial_price_usd: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    initial_market_cap: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    initial_liquidity_usd: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    initial_holder_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    initial_risk_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    initial_opportunity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    
+    # 1-day follow-up
+    day1_reviewed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    day1_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    day1_price_usd: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    day1_market_cap: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    day1_liquidity_usd: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    day1_holder_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    day1_risk_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    day1_price_change_pct: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    day1_rugged: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    day1_rug_reason: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    
+    # 1-week follow-up
+    week1_reviewed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    week1_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    week1_price_usd: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    week1_market_cap: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    week1_liquidity_usd: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    week1_holder_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    week1_risk_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    week1_price_change_pct: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    week1_rugged: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    week1_rug_reason: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    
+    # Final outcome classification for ML
+    final_outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)  # SURVIVED, RUGGED, DEAD, MOONED
+    outcome_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_opportunity_reviews_pending_day1", "day1_reviewed", "initial_timestamp"),
+        Index("ix_opportunity_reviews_pending_week1", "week1_reviewed", "initial_timestamp"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<OpportunityReview {self.token_address[:8]}... outcome={self.final_outcome}>"

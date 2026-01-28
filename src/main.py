@@ -28,6 +28,7 @@ from src.scoring.opportunity_scorer import OpportunityScorer
 from src.alerts.alert_manager import AlertManager
 from src.alerts.telegram import TelegramChannel
 from src.alerts.webhook import WebhookChannel
+from src.analysis.opportunity_tracker import OpportunityTracker
 from src.api.server import create_app, set_app_state
 
 
@@ -98,6 +99,7 @@ class MonitorApp:
         self.risk_scorer: RiskScorer | None = None
         self.opportunity_scorer: OpportunityScorer | None = None
         self.alert_manager: AlertManager | None = None
+        self.opportunity_tracker: OpportunityTracker | None = None
 
     async def init(self) -> None:
         """Initialize all components."""
@@ -154,14 +156,25 @@ class MonitorApp:
             on_token_data=self._on_token_data,
         )
 
+        # Opportunity tracker for ML training data
+        self.opportunity_tracker = OpportunityTracker(
+            self.database,
+            self.dex_client,
+            self.config.ingestion,
+        )
+
         set_app_state("database", self.database)
         set_app_state("scheduler", self.scheduler)
+        set_app_state("opportunity_tracker", self.opportunity_tracker)
 
         logger.info("All components initialized")
 
     async def close(self) -> None:
         """Close all components."""
         logger.info("Closing components")
+
+        if self.opportunity_tracker:
+            await self.opportunity_tracker.stop()
 
         if self.scheduler:
             await self.scheduler.stop()
@@ -299,6 +312,23 @@ class MonitorApp:
                     from src.storage.repositories import AlertRepository
                     alert_repo = AlertRepository(session)
                     await alert_repo.create(alert)
+                    await session.commit()
+
+                # Create opportunity review for ML tracking if this is an OPPORTUNITY alert
+                if alert.alert_type == "OPPORTUNITY" and self.opportunity_tracker:
+                    snapshot_data = {
+                        "price_usd": data.price_usd,
+                        "market_cap": data.market_cap,
+                        "liquidity_usd": data.liquidity_usd,
+                        "holder_count": holder_count if "holder" in analyses else None,
+                        "risk_score": risk_score.score if risk_score else None,
+                        "opportunity_score": opportunity_score.score if opportunity_score else None,
+                    }
+                    await self.opportunity_tracker.create_review(
+                        token_address,
+                        alert.id,
+                        snapshot_data,
+                    )
 
         return {
             "token": data,
@@ -374,6 +404,7 @@ async def run_monitor(config: Config, enable_api: bool) -> None:
     try:
         await app.init()
         await app.scheduler.start()
+        await app.opportunity_tracker.start()
 
         api_server = None
         if enable_api and config.api.enabled:

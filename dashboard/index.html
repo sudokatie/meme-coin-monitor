@@ -25,6 +25,7 @@
             <button class="tab" data-tab="risky">Risky</button>
             <button class="tab" data-tab="opportunities">Opportunities</button>
             <button class="tab" data-tab="alerts">Alerts</button>
+            <button class="tab" data-tab="ml-data">ML Data</button>
             <button class="tab" data-tab="lookup">Lookup</button>
             <button class="tab" data-tab="settings">Settings</button>
         </nav>
@@ -170,6 +171,106 @@
                         <button id="watch-remove-btn" class="btn btn-danger">REMOVE</button>
                     </div>
                     <div id="watchlist-status"></div>
+                </div>
+            </section>
+
+            <!-- ML Data Tab -->
+            <section id="ml-data" class="tab-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">TOTAL TRACKED</div>
+                        <div class="stat-value" id="ml-total">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">PENDING DAY 1</div>
+                        <div class="stat-value" id="ml-pending-day1">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">PENDING WEEK 1</div>
+                        <div class="stat-value" id="ml-pending-week1">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">COMPLETED</div>
+                        <div class="stat-value" id="ml-completed">--</div>
+                    </div>
+                </div>
+
+                <div class="two-col">
+                    <div class="panel">
+                        <h2>OUTCOMES</h2>
+                        <div id="ml-outcomes" class="outcomes-chart">
+                            <div class="outcome-row">
+                                <span class="outcome-label">SURVIVED</span>
+                                <span class="outcome-bar survived" id="bar-survived"></span>
+                                <span class="outcome-count" id="count-survived">--</span>
+                            </div>
+                            <div class="outcome-row">
+                                <span class="outcome-label">RUGGED</span>
+                                <span class="outcome-bar rugged" id="bar-rugged"></span>
+                                <span class="outcome-count" id="count-rugged">--</span>
+                            </div>
+                            <div class="outcome-row">
+                                <span class="outcome-label">DEAD</span>
+                                <span class="outcome-bar dead" id="bar-dead"></span>
+                                <span class="outcome-count" id="count-dead">--</span>
+                            </div>
+                            <div class="outcome-row">
+                                <span class="outcome-label">MOONED</span>
+                                <span class="outcome-bar mooned" id="bar-mooned"></span>
+                                <span class="outcome-count" id="count-mooned">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h2>RUG TIMING</h2>
+                        <div class="rug-stats">
+                            <div class="rug-stat">
+                                <div class="rug-stat-label">Rugged within 24h</div>
+                                <div class="rug-stat-value" id="rugged-day1">--</div>
+                            </div>
+                            <div class="rug-stat">
+                                <div class="rug-stat-label">Rugged within 7 days</div>
+                                <div class="rug-stat-value" id="rugged-week1">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>OPPORTUNITY REVIEWS</h2>
+                    <div class="controls">
+                        <select id="review-filter">
+                            <option value="">ALL</option>
+                            <option value="pending_day1">PENDING DAY 1</option>
+                            <option value="pending_week1">PENDING WEEK 1</option>
+                            <option value="completed">COMPLETED</option>
+                        </select>
+                        <select id="outcome-filter">
+                            <option value="">ALL OUTCOMES</option>
+                            <option value="SURVIVED">SURVIVED</option>
+                            <option value="RUGGED">RUGGED</option>
+                            <option value="DEAD">DEAD</option>
+                            <option value="MOONED">MOONED</option>
+                        </select>
+                        <button id="refresh-reviews" class="btn">REFRESH</button>
+                        <button id="export-csv" class="btn">EXPORT CSV</button>
+                    </div>
+                    <div id="ml-reviews" class="token-table-container">
+                        <table class="token-table">
+                            <thead>
+                                <tr>
+                                    <th>TOKEN</th>
+                                    <th>INITIAL PRICE</th>
+                                    <th>DAY 1</th>
+                                    <th>WEEK 1</th>
+                                    <th>OUTCOME</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reviews-tbody">
+                                <tr><td colspan="5" class="loading">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 

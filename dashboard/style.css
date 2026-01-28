@@ -714,3 +714,115 @@ footer {
         padding: 12px 14px;
     }
 }
+
+/* ============================================ */
+/* ML Data Tab Styles */
+/* ============================================ */
+
+.outcomes-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px 0;
+}
+
+.outcome-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.outcome-label {
+    width: 80px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.outcome-bar {
+    height: 24px;
+    min-width: 4px;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.outcome-bar.survived { background: var(--success); }
+.outcome-bar.rugged { background: var(--danger); }
+.outcome-bar.dead { background: var(--text-muted); }
+.outcome-bar.mooned { background: var(--accent); }
+
+.outcome-count {
+    min-width: 40px;
+    text-align: right;
+    font-weight: 600;
+}
+
+.rug-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 10px 0;
+}
+
+.rug-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface);
+    border-radius: 6px;
+}
+
+.rug-stat-label {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.rug-stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--danger);
+}
+
+/* Review row statuses */
+.status-pending {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.status-rugged {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.status-ok {
+    font-weight: 500;
+}
+
+.status-ok.positive {
+    color: var(--success);
+}
+
+.status-ok.negative {
+    color: var(--danger);
+}
+
+/* Outcome badges */
+.outcome-survived {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.outcome-rugged {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.outcome-dead {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.outcome-mooned {
+    color: var(--accent);
+    font-weight: 600;
+}
