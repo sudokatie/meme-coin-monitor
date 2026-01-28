@@ -289,13 +289,13 @@ async function checkConnection() {
         if (result.data?.status === 'ok') {
             setConnected(true);
             document.getElementById('api-status').textContent = 'ONLINE';
-            document.getElementById('api-status').style.color = '#7aaa6a';
+            document.getElementById('api-status').style.color = '#00ff00';
         }
     } catch (error) {
         console.error('Connection check failed:', error);
         setConnected(false);
         document.getElementById('api-status').textContent = 'OFFLINE';
-        document.getElementById('api-status').style.color = '#c45c4c';
+        document.getElementById('api-status').style.color = '#ff4444';
     }
 }
 
