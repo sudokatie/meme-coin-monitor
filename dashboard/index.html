@@ -4,47 +4,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meme Coin Monitor</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
     <div class="container">
+        <!-- Toast Container -->
+        <div id="toast-container"></div>
+        
         <header>
-            <h1>Meme Coin <span>Monitor</span></h1>
+            <div class="header-top">
+                <h1>Meme Coin <span>Monitor</span></h1>
+                <div class="header-actions">
+                    <button id="settings-btn" class="icon-btn" title="Settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                    <span id="current-user"></span>
+                    <button id="logout-btn" class="btn btn-small">LOGOUT</button>
+                </div>
+            </div>
             <div class="status-bar">
                 <span id="connection-status" class="status disconnected">DISCONNECTED</span>
                 <span id="last-update">Last update: --</span>
-                <span id="user-info" style="margin-left: 20px;">
-                    <span id="current-user"></span>
-                    <button id="logout-btn" class="btn btn-small" style="margin-left: 10px;">LOGOUT</button>
-                </span>
             </div>
         </header>
 
         <nav class="tabs">
-            <button class="tab active" data-tab="overview">Overview</button>
-            <button class="tab" data-tab="risky">Risky</button>
-            <button class="tab" data-tab="opportunities">Opportunities</button>
+            <button class="tab active" data-tab="overview">Dashboard</button>
+            <button class="tab" data-tab="tokens">Tokens</button>
             <button class="tab" data-tab="alerts">Alerts</button>
-            <button class="tab" data-tab="ml-data">Rugs</button>
+            <button class="tab" data-tab="track-record">Track Record</button>
             <button class="tab" data-tab="lookup">Lookup</button>
-            <button class="tab" data-tab="settings">Settings</button>
         </nav>
 
         <main>
-            <!-- Overview Tab -->
+            <!-- Dashboard Tab (was Overview) -->
             <section id="overview" class="tab-content active">
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">RISKY TOKENS</div>
-                        <div class="stat-value" id="risky-count">--</div>
+                    <div class="stat-card" data-tooltip="Tokens with high scam probability">
+                        <div class="stat-label">DANGEROUS TOKENS</div>
+                        <div class="stat-value danger" id="risky-count">--</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">OPPORTUNITIES</div>
-                        <div class="stat-value" id="opportunity-count">--</div>
+                    <div class="stat-card" data-tooltip="Tokens that look safer to consider">
+                        <div class="stat-label">SAFER TOKENS</div>
+                        <div class="stat-value safe" id="opportunity-count">--</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-tooltip="Warnings and notifications in last 24 hours">
                         <div class="stat-label">ALERTS (24H)</div>
-                        <div class="stat-value" id="alert-count">--</div>
+                        <div class="stat-value warning" id="alert-count">--</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">API STATUS</div>
@@ -56,76 +65,71 @@
                     <h2>RECENT ALERTS</h2>
                     <div class="filter-pills" id="alert-pills">
                         <button class="pill active" data-filter="">All</button>
-                        <button class="pill" data-filter="RUG_WARNING">Rug Warning</button>
+                        <button class="pill" data-filter="RUG_WARNING">Scam Warning</button>
                         <button class="pill" data-filter="OPPORTUNITY">Opportunity</button>
                     </div>
                     <div id="recent-alerts" class="alert-list">
-                        <div class="loading">Loading...</div>
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <span>Loading alerts...</span>
+                        </div>
                     </div>
                 </div>
 
                 <div class="two-col">
                     <div class="panel">
-                        <h2>TOP RISKY</h2>
+                        <h2>MOST DANGEROUS <span class="help-icon" data-tooltip="Tokens most likely to be scams based on our analysis">?</span></h2>
                         <div id="top-risky" class="token-list">
-                            <div class="loading">Loading...</div>
+                            <div class="loading-state">
+                                <div class="spinner"></div>
+                                <span>Analyzing tokens...</span>
+                            </div>
                         </div>
                     </div>
                     <div class="panel">
-                        <h2>TOP OPPORTUNITIES</h2>
+                        <h2>SAFEST BETS <span class="help-icon" data-tooltip="Tokens that pass more safety checks - still risky, just less so">?</span></h2>
                         <div id="top-opportunities" class="token-list">
-                            <div class="loading">Loading...</div>
+                            <div class="loading-state">
+                                <div class="spinner"></div>
+                                <span>Finding opportunities...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Risky Tokens Tab -->
-            <section id="risky" class="tab-content">
+            <!-- Tokens Tab (merged Risky + Opportunities) -->
+            <section id="tokens" class="tab-content">
                 <div class="panel">
-                    <h2>HIGH RISK TOKENS</h2>
-                    <div class="controls">
-                        <button id="refresh-risky" class="btn">REFRESH</button>
+                    <div class="panel-header">
+                        <h2>ALL ANALYZED TOKENS</h2>
+                        <div class="controls">
+                            <div class="filter-pills">
+                                <button class="pill active" data-token-filter="all">All</button>
+                                <button class="pill" data-token-filter="dangerous">Dangerous</button>
+                                <button class="pill" data-token-filter="safer">Safer</button>
+                            </div>
+                            <button id="refresh-tokens" class="btn">
+                                <svg class="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                                REFRESH
+                            </button>
+                        </div>
                     </div>
-                    <div id="risky-tokens" class="token-table-container">
+                    <div id="all-tokens" class="token-table-container">
                         <table class="token-table">
                             <thead>
                                 <tr>
-                                    <th>ADDRESS</th>
-                                    <th>RISK</th>
-                                    <th>OPPORTUNITY</th>
-                                    <th>CONFIDENCE</th>
-                                    <th>TIME</th>
+                                    <th>TOKEN ADDRESS <span class="help-icon small" data-tooltip="Click any address to copy it">?</span></th>
+                                    <th>DANGER LEVEL <span class="help-icon small" data-tooltip="0-100 score. Higher = more likely to be a scam">?</span></th>
+                                    <th>SAFETY SCORE <span class="help-icon small" data-tooltip="0-100 score. Higher = passes more safety checks">?</span></th>
+                                    <th>DATA QUALITY <span class="help-icon small" data-tooltip="How much data we have to make this assessment">?</span></th>
+                                    <th>ANALYZED</th>
                                 </tr>
                             </thead>
-                            <tbody id="risky-tbody">
-                                <tr><td colspan="5" class="loading">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Opportunities Tab -->
-            <section id="opportunities" class="tab-content">
-                <div class="panel">
-                    <h2>OPPORTUNITY TOKENS</h2>
-                    <div class="controls">
-                        <button id="refresh-opportunities" class="btn">REFRESH</button>
-                    </div>
-                    <div id="opportunity-tokens" class="token-table-container">
-                        <table class="token-table">
-                            <thead>
-                                <tr>
-                                    <th>ADDRESS</th>
-                                    <th>OPPORTUNITY</th>
-                                    <th>RISK</th>
-                                    <th>CONFIDENCE</th>
-                                    <th>TIME</th>
-                                </tr>
-                            </thead>
-                            <tbody id="opportunities-tbody">
-                                <tr><td colspan="5" class="loading">Loading...</td></tr>
+                            <tbody id="tokens-tbody">
+                                <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><span>Loading tokens...</span></div></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -135,17 +139,27 @@
             <!-- Alerts Tab -->
             <section id="alerts" class="tab-content">
                 <div class="panel">
-                    <h2>ALL ALERTS</h2>
-                    <div class="controls">
-                        <select id="alert-filter">
-                            <option value="">ALL TYPES</option>
-                            <option value="RUG_WARNING">RUG WARNING</option>
-                            <option value="OPPORTUNITY">OPPORTUNITY</option>
-                        </select>
-                        <button id="refresh-alerts" class="btn">REFRESH</button>
+                    <div class="panel-header">
+                        <h2>ALL ALERTS</h2>
+                        <div class="controls">
+                            <select id="alert-filter">
+                                <option value="">ALL TYPES</option>
+                                <option value="RUG_WARNING">SCAM WARNING</option>
+                                <option value="OPPORTUNITY">OPPORTUNITY</option>
+                            </select>
+                            <button id="refresh-alerts" class="btn">
+                                <svg class="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                                REFRESH
+                            </button>
+                        </div>
                     </div>
                     <div id="all-alerts" class="alert-list-full">
-                        <div class="loading">Loading...</div>
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <span>Loading alerts...</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -153,20 +167,26 @@
             <!-- Token Lookup Tab -->
             <section id="lookup" class="tab-content">
                 <div class="panel">
-                    <h2>TOKEN LOOKUP</h2>
+                    <h2>TOKEN LOOKUP <span class="help-icon" data-tooltip="Paste any token address to see our safety analysis">?</span></h2>
                     <div class="lookup-form">
-                        <input type="text" id="token-address" placeholder="Enter token address..." />
-                        <button id="lookup-btn" class="btn">ANALYZE</button>
+                        <input type="text" id="token-address" placeholder="Paste token address here..." />
+                        <button id="lookup-btn" class="btn btn-primary">ANALYZE</button>
                     </div>
                     <div id="token-result" class="token-detail">
-                        <div class="placeholder">Enter a token address to view analysis</div>
+                        <div class="placeholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="M21 21l-4.35-4.35"></path>
+                            </svg>
+                            <p>Enter a token address above to see our safety analysis</p>
+                        </div>
                     </div>
                 </div>
 
                 <div class="panel">
-                    <h2>WATCHLIST</h2>
+                    <h2>YOUR WATCHLIST <span class="help-icon" data-tooltip="Track specific tokens you're interested in">?</span></h2>
                     <div class="lookup-form">
-                        <input type="text" id="watch-address" placeholder="Enter token address..." />
+                        <input type="text" id="watch-address" placeholder="Add token to watchlist..." />
                         <button id="watch-add-btn" class="btn">ADD</button>
                         <button id="watch-remove-btn" class="btn btn-danger">REMOVE</button>
                     </div>
@@ -174,19 +194,27 @@
                 </div>
             </section>
 
-            <!-- ML Data Tab -->
-            <section id="ml-data" class="tab-content">
+            <!-- Track Record Tab (was ML Data) -->
+            <section id="track-record" class="tab-content">
+                <div class="info-banner">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 16v-4M12 8h.01"></path>
+                    </svg>
+                    <span>This shows how tokens we flagged actually performed over time. We track them for 7 days to see if our predictions were right.</span>
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">TOTAL TRACKED</div>
                         <div class="stat-value" id="ml-total">--</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">PENDING DAY 1</div>
+                        <div class="stat-label">CHECKING (24H)</div>
                         <div class="stat-value" id="ml-pending-day1">--</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">PENDING WEEK 1</div>
+                        <div class="stat-label">CHECKING (7 DAY)</div>
                         <div class="stat-value" id="ml-pending-week1">--</div>
                     </div>
                     <div class="stat-card">
@@ -197,7 +225,7 @@
 
                 <div class="two-col">
                     <div class="panel">
-                        <h2>OUTCOMES</h2>
+                        <h2>WHAT HAPPENED TO THEM <span class="help-icon" data-tooltip="Final outcomes after 7 days of tracking">?</span></h2>
                         <div id="ml-outcomes" class="outcomes-chart">
                             <div class="outcome-row">
                                 <span class="outcome-label">SURVIVED</span>
@@ -205,155 +233,160 @@
                                 <span class="outcome-count" id="count-survived">--</span>
                             </div>
                             <div class="outcome-row">
-                                <span class="outcome-label">RUGGED</span>
-                                <span class="outcome-bar rugged" id="bar-rugged"></span>
+                                <span class="outcome-label">SCAM</span>
+                                <span class="outcome-bar scam" id="bar-rugged"></span>
                                 <span class="outcome-count" id="count-rugged">--</span>
                             </div>
                             <div class="outcome-row">
-                                <span class="outcome-label">DEAD</span>
-                                <span class="outcome-bar dead" id="bar-dead"></span>
+                                <span class="outcome-label">FAILED</span>
+                                <span class="outcome-bar failed" id="bar-dead"></span>
                                 <span class="outcome-count" id="count-dead">--</span>
                             </div>
                             <div class="outcome-row">
-                                <span class="outcome-label">MOONED</span>
-                                <span class="outcome-bar mooned" id="bar-mooned"></span>
+                                <span class="outcome-label">BIG WIN</span>
+                                <span class="outcome-bar bigwin" id="bar-mooned"></span>
                                 <span class="outcome-count" id="count-mooned">--</span>
                             </div>
                         </div>
+                        <div class="outcome-legend">
+                            <span><b>Survived:</b> Still trading normally</span>
+                            <span><b>Scam:</b> Turned out to be a rug pull</span>
+                            <span><b>Failed:</b> Lost most value but not a scam</span>
+                            <span><b>Big Win:</b> Increased 10x or more</span>
+                        </div>
                     </div>
                     <div class="panel">
-                        <h2>RUG TIMING</h2>
+                        <h2>SCAM TIMING <span class="help-icon" data-tooltip="How quickly scams typically happen">?</span></h2>
                         <div class="rug-stats">
                             <div class="rug-stat">
-                                <div class="rug-stat-label">Rugged within 24h</div>
+                                <div class="rug-stat-label">Scammed within 24 hours</div>
                                 <div class="rug-stat-value" id="rugged-day1">--</div>
                             </div>
                             <div class="rug-stat">
-                                <div class="rug-stat-label">Rugged within 7 days</div>
+                                <div class="rug-stat-label">Scammed within 7 days</div>
                                 <div class="rug-stat-value" id="rugged-week1">--</div>
                             </div>
                         </div>
+                        <p class="stat-note">Most scams happen fast. If a token survives a week, it's less likely (but not impossible) to be a scam.</p>
                     </div>
                 </div>
 
                 <div class="panel">
-                    <h2>OPPORTUNITY REVIEWS</h2>
-                    <div class="controls">
-                        <select id="review-filter">
-                            <option value="">ALL</option>
-                            <option value="pending_day1">PENDING DAY 1</option>
-                            <option value="pending_week1">PENDING WEEK 1</option>
-                            <option value="completed">COMPLETED</option>
-                        </select>
-                        <select id="outcome-filter">
-                            <option value="">ALL OUTCOMES</option>
-                            <option value="SURVIVED">SURVIVED</option>
-                            <option value="RUGGED">RUGGED</option>
-                            <option value="DEAD">DEAD</option>
-                            <option value="MOONED">MOONED</option>
-                        </select>
-                        <button id="refresh-reviews" class="btn">REFRESH</button>
-                        <button id="export-csv" class="btn">EXPORT CSV</button>
+                    <div class="panel-header">
+                        <h2>DETAILED HISTORY</h2>
+                        <div class="controls">
+                            <select id="review-filter">
+                                <option value="">ALL STATUS</option>
+                                <option value="pending_day1">CHECKING (24H)</option>
+                                <option value="pending_week1">CHECKING (7 DAY)</option>
+                                <option value="completed">COMPLETED</option>
+                            </select>
+                            <select id="outcome-filter">
+                                <option value="">ALL OUTCOMES</option>
+                                <option value="SURVIVED">SURVIVED</option>
+                                <option value="RUGGED">SCAM</option>
+                                <option value="DEAD">FAILED</option>
+                                <option value="MOONED">BIG WIN</option>
+                            </select>
+                            <button id="refresh-reviews" class="btn">REFRESH</button>
+                            <button id="export-csv" class="btn">DOWNLOAD SPREADSHEET</button>
+                        </div>
                     </div>
                     <div id="ml-reviews" class="token-table-container">
                         <table class="token-table">
                             <thead>
                                 <tr>
                                     <th>TOKEN</th>
-                                    <th>PRICE</th>
-                                    <th>24H</th>
-                                    <th>7D</th>
-                                    <th>RESULT</th>
+                                    <th>STARTING PRICE</th>
+                                    <th>AFTER 24H</th>
+                                    <th>AFTER 7 DAYS</th>
+                                    <th>FINAL RESULT</th>
                                 </tr>
                             </thead>
                             <tbody id="reviews-tbody">
-                                <tr><td colspan="5" class="loading">Loading...</td></tr>
+                                <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><span>Loading history...</span></div></td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-            <!-- Settings Tab -->
-            <section id="settings" class="tab-content">
-                <div class="panel">
-                    <h2>DISPLAY LIMITS</h2>
-                    <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 13px;">
-                        Configure how many items to load in each view. Higher limits may slow down the interface.
-                    </p>
-                    
-                    <div class="settings-grid">
-                        <div class="setting-item">
-                            <label for="limit-risky">Risky Tokens</label>
-                            <select id="limit-risky">
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                                <option value="250">250</option>
-                                <option value="500">500</option>
-                                <option value="1000">1,000</option>
-                                <option value="2500">2,500</option>
-                                <option value="5000">5,000</option>
-                                <option value="10000">10,000</option>
-                            </select>
-                            <span class="setting-warning" id="warn-risky"></span>
+            <!-- Settings Modal -->
+            <div id="settings-modal" class="modal hidden">
+                <div class="modal-backdrop"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Settings</h2>
+                        <button class="modal-close" id="close-settings">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <h3>Display Limits</h3>
+                        <p class="setting-desc">How many items to load at once. Lower = faster, higher = more data.</p>
+                        
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label for="limit-risky">Dangerous Tokens</label>
+                                <select id="limit-risky">
+                                    <option value="50">50</option>
+                                    <option value="100" selected>100</option>
+                                    <option value="250">250</option>
+                                    <option value="500">500</option>
+                                </select>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <label for="limit-opportunities">Safer Tokens</label>
+                                <select id="limit-opportunities">
+                                    <option value="50">50</option>
+                                    <option value="100" selected>100</option>
+                                    <option value="250">250</option>
+                                    <option value="500">500</option>
+                                </select>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <label for="limit-alerts">Alerts</label>
+                                <select id="limit-alerts">
+                                    <option value="50">50</option>
+                                    <option value="100" selected>100</option>
+                                    <option value="250">250</option>
+                                    <option value="500">500</option>
+                                </select>
+                            </div>
                         </div>
                         
-                        <div class="setting-item">
-                            <label for="limit-opportunities">Opportunities</label>
-                            <select id="limit-opportunities">
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                                <option value="250">250</option>
-                                <option value="500">500</option>
-                                <option value="1000">1,000</option>
-                                <option value="2500">2,500</option>
-                                <option value="5000">5,000</option>
-                                <option value="10000">10,000</option>
-                            </select>
-                            <span class="setting-warning" id="warn-opportunities"></span>
-                        </div>
-                        
-                        <div class="setting-item">
-                            <label for="limit-alerts">Alerts</label>
-                            <select id="limit-alerts">
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                                <option value="250">250</option>
-                                <option value="500">500</option>
-                                <option value="1000">1,000</option>
-                                <option value="2500">2,500</option>
-                                <option value="5000">5,000</option>
-                                <option value="10000">10,000</option>
-                            </select>
-                            <span class="setting-warning" id="warn-alerts"></span>
+                        <div class="modal-actions">
+                            <button id="save-settings" class="btn btn-primary">Save Settings</button>
+                            <button id="reset-settings" class="btn">Reset to Defaults</button>
                         </div>
                     </div>
-                    
-                    <div style="margin-top: 24px;">
-                        <button id="save-settings" class="btn">Save Settings</button>
-                        <button id="reset-settings" class="btn" style="margin-left: 12px;">Reset to Defaults</button>
-                    </div>
-                    <div id="settings-status" style="margin-top: 12px;"></div>
                 </div>
-                
-                <div class="panel">
-                    <h2>PERFORMANCE NOTES</h2>
-                    <div style="color: var(--text-muted); font-size: 13px; line-height: 1.8;">
-                        <p><strong style="color: var(--text);">50-100:</strong> Fast, recommended for regular use</p>
-                        <p><strong style="color: var(--text);">250-500:</strong> Slightly slower, good for deeper analysis</p>
-                        <p><strong style="color: var(--warning);">1,000-2,500:</strong> May take a few seconds to load</p>
-                        <p><strong style="color: var(--danger);">5,000-10,000:</strong> Can be slow, use for exports or full scans</p>
+            </div>
+
+            <!-- Logout Confirmation Modal -->
+            <div id="logout-modal" class="modal hidden">
+                <div class="modal-backdrop"></div>
+                <div class="modal-content modal-small">
+                    <div class="modal-header">
+                        <h2>Log Out?</h2>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to log out?</p>
+                        <div class="modal-actions">
+                            <button id="confirm-logout" class="btn btn-danger">Yes, Log Out</button>
+                            <button id="cancel-logout" class="btn">Cancel</button>
+                        </div>
                     </div>
                 </div>
-            </section>
+            </div>
         </main>
 
         <footer>
-            <span>Meme Coin Monitor v0.1.0</span>
+            <span>Meme Coin Monitor v0.2.0</span>
             <span>API: <span id="api-url"></span></span>
         </footer>
     </div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>

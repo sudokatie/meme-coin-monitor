@@ -1,16 +1,15 @@
-// Meme Coin Monitor Dashboard v0.2.0
-// Mom Test UX Improvements Applied
+// Meme Coin Monitor Dashboard
 
-// Detect base path from current URL
+// Detect base path from current URL (e.g., /apps/meme from /apps/meme/dashboard/)
 const pathParts = window.location.pathname.split('/');
+// Find 'dashboard' in path and get everything before it
 const dashIdx = pathParts.indexOf('dashboard');
 const BASE_PATH = dashIdx > 0 ? pathParts.slice(0, dashIdx).join('/') : '';
+// Use same origin for API calls (auth cookies need same origin)
 const API_BASE = window.location.origin + BASE_PATH;
-
 let isConnected = false;
 let refreshInterval = null;
 let currentUsername = null;
-let currentTokenFilter = 'all';
 
 // Settings with defaults
 const DEFAULT_SETTINGS = {
@@ -21,39 +20,7 @@ const DEFAULT_SETTINGS = {
 
 let settings = { ...DEFAULT_SETTINGS };
 
-// ============================================
-// Toast Notification System
-// ============================================
-
-function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${message}</span>`;
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('fade-out');
-        setTimeout(() => toast.remove(), 300);
-    }, duration);
-}
-
-// ============================================
-// Copy with Feedback
-// ============================================
-
-function copyAddress(address) {
-    navigator.clipboard.writeText(address).then(() => {
-        showToast('Address copied!', 'success', 2000);
-    }).catch(() => {
-        showToast('Failed to copy', 'error', 2000);
-    });
-}
-
-// ============================================
-// Settings
-// ============================================
-
+// Load settings from localStorage
 function loadSettings() {
     try {
         const saved = localStorage.getItem('memeMonitorSettings');
@@ -66,6 +33,7 @@ function loadSettings() {
     return settings;
 }
 
+// Save settings to localStorage
 function saveSettings() {
     try {
         localStorage.setItem('memeMonitorSettings', JSON.stringify(settings));
@@ -74,9 +42,31 @@ function saveSettings() {
     }
 }
 
+// Update warning text based on limit value
+function updateLimitWarning(selectId, warnId) {
+    const select = document.getElementById(selectId);
+    const warn = document.getElementById(warnId);
+    if (!select || !warn) return;
+    
+    const value = parseInt(select.value);
+    warn.className = 'setting-warning';
+    
+    if (value >= 5000) {
+        warn.textContent = 'May be slow to load';
+        warn.classList.add('warn-high');
+    } else if (value >= 1000) {
+        warn.textContent = 'Could take a few seconds';
+        warn.classList.add('warn-medium');
+    } else {
+        warn.textContent = '';
+    }
+}
+
+// Initialize settings UI
 function initSettings() {
     loadSettings();
     
+    // Set select values from settings
     const riskySelect = document.getElementById('limit-risky');
     const oppSelect = document.getElementById('limit-opportunities');
     const alertsSelect = document.getElementById('limit-alerts');
@@ -85,14 +75,28 @@ function initSettings() {
     if (oppSelect) oppSelect.value = settings.limitOpportunities;
     if (alertsSelect) alertsSelect.value = settings.limitAlerts;
     
+    // Add change listeners for warnings
+    riskySelect?.addEventListener('change', () => updateLimitWarning('limit-risky', 'warn-risky'));
+    oppSelect?.addEventListener('change', () => updateLimitWarning('limit-opportunities', 'warn-opportunities'));
+    alertsSelect?.addEventListener('change', () => updateLimitWarning('limit-alerts', 'warn-alerts'));
+    
+    // Initial warning update
+    updateLimitWarning('limit-risky', 'warn-risky');
+    updateLimitWarning('limit-opportunities', 'warn-opportunities');
+    updateLimitWarning('limit-alerts', 'warn-alerts');
+    
     // Save button
     document.getElementById('save-settings')?.addEventListener('click', () => {
         settings.limitRisky = parseInt(riskySelect?.value || 100);
         settings.limitOpportunities = parseInt(oppSelect?.value || 100);
         settings.limitAlerts = parseInt(alertsSelect?.value || 100);
         saveSettings();
-        showToast('Settings saved!', 'success');
-        closeModal('settings-modal');
+        
+        const status = document.getElementById('settings-status');
+        if (status) {
+            status.innerHTML = '<div class="success-msg">Settings saved</div>';
+            setTimeout(() => { status.innerHTML = ''; }, 3000);
+        }
     });
     
     // Reset button
@@ -104,63 +108,25 @@ function initSettings() {
         if (oppSelect) oppSelect.value = DEFAULT_SETTINGS.limitOpportunities;
         if (alertsSelect) alertsSelect.value = DEFAULT_SETTINGS.limitAlerts;
         
-        showToast('Settings reset to defaults', 'info');
-    });
-}
-
-// ============================================
-// Modal Management
-// ============================================
-
-function openModal(modalId) {
-    document.getElementById(modalId)?.classList.remove('hidden');
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId)?.classList.add('hidden');
-}
-
-function initModals() {
-    // Settings modal
-    document.getElementById('settings-btn')?.addEventListener('click', () => openModal('settings-modal'));
-    document.getElementById('close-settings')?.addEventListener('click', () => closeModal('settings-modal'));
-    
-    // Logout modal
-    document.getElementById('logout-btn')?.addEventListener('click', () => openModal('logout-modal'));
-    document.getElementById('cancel-logout')?.addEventListener('click', () => closeModal('logout-modal'));
-    document.getElementById('confirm-logout')?.addEventListener('click', async () => {
-        try {
-            await fetch(`${API_BASE}/auth/logout`, {
-                method: 'POST',
-                credentials: 'include'
-            });
-        } catch (error) {
-            console.error('Logout error:', error);
+        updateLimitWarning('limit-risky', 'warn-risky');
+        updateLimitWarning('limit-opportunities', 'warn-opportunities');
+        updateLimitWarning('limit-alerts', 'warn-alerts');
+        
+        const status = document.getElementById('settings-status');
+        if (status) {
+            status.innerHTML = '<div class="success-msg">Settings reset to defaults</div>';
+            setTimeout(() => { status.innerHTML = ''; }, 3000);
         }
-        window.location.href = BASE_PATH + '/login';
-    });
-    
-    // Close modals on backdrop click
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-        backdrop.addEventListener('click', () => {
-            backdrop.closest('.modal')?.classList.add('hidden');
-        });
     });
 }
 
-// ============================================
 // DOM Elements
-// ============================================
-
 const connectionStatus = document.getElementById('connection-status');
 const lastUpdate = document.getElementById('last-update');
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
-// ============================================
 // Initialize
-// ============================================
-
 document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication first
     const authenticated = await checkAuthentication();
@@ -174,9 +140,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     initTabs();
     initEventListeners();
-    initModals();
+    initLogout();
     initSettings();
-    initTokenFilters();
     checkConnection();
     loadAllData();
     
@@ -190,10 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 30000);
 });
 
-// ============================================
 // Authentication
-// ============================================
-
 async function checkAuthentication() {
     try {
         const response = await fetch(`${API_BASE}/auth/session`, {
@@ -215,10 +177,24 @@ async function checkAuthentication() {
     return false;
 }
 
-// ============================================
-// Tab Navigation
-// ============================================
+function initLogout() {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            window.location.href = BASE_PATH + '/login';
+        });
+    }
+}
 
+// Tab Navigation
 function initTabs() {
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
@@ -229,14 +205,6 @@ function initTabs() {
             
             tab.classList.add('active');
             document.getElementById(targetId).classList.add('active');
-            
-            // Load data for specific tabs
-            if (targetId === 'tokens') loadAllTokens();
-            if (targetId === 'alerts') loadAllAlerts();
-            if (targetId === 'track-record') {
-                loadMLStats();
-                loadReviews();
-            }
         });
     });
 }
@@ -244,12 +212,10 @@ function initTabs() {
 // Current filter for recent alerts
 let recentAlertsFilter = '';
 
-// ============================================
 // Event Listeners
-// ============================================
-
 function initEventListeners() {
-    document.getElementById('refresh-tokens')?.addEventListener('click', loadAllTokens);
+    document.getElementById('refresh-risky')?.addEventListener('click', loadRiskyTokens);
+    document.getElementById('refresh-opportunities')?.addEventListener('click', loadOpportunityTokens);
     document.getElementById('refresh-alerts')?.addEventListener('click', loadAllAlerts);
     document.getElementById('lookup-btn')?.addEventListener('click', lookupToken);
     document.getElementById('watch-add-btn')?.addEventListener('click', addToWatchlist);
@@ -269,32 +235,21 @@ function initAlertPills() {
     const pills = document.querySelectorAll('#alert-pills .pill');
     pills.forEach(pill => {
         pill.addEventListener('click', () => {
+            // Update active state
             pills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
+            
+            // Update filter and reload
             recentAlertsFilter = pill.dataset.filter || '';
             loadRecentAlerts();
         });
     });
 }
 
-function initTokenFilters() {
-    const pills = document.querySelectorAll('[data-token-filter]');
-    pills.forEach(pill => {
-        pill.addEventListener('click', () => {
-            pills.forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            currentTokenFilter = pill.dataset.tokenFilter || 'all';
-            loadAllTokens();
-        });
-    });
-}
-
-// ============================================
 // API Functions
-// ============================================
-
 async function apiCall(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
+    console.log('API call:', url);
     try {
         const response = await fetch(url, {
             ...options,
@@ -305,6 +260,9 @@ async function apiCall(endpoint, options = {}) {
             }
         });
         
+        console.log('Response status:', response.status);
+        
+        // Handle auth failures
         if (response.status === 401) {
             window.location.href = BASE_PATH + '/login';
             return null;
@@ -314,7 +272,9 @@ async function apiCall(endpoint, options = {}) {
             throw new Error(`HTTP ${response.status}`);
         }
         
-        return await response.json();
+        const data = await response.json();
+        console.log('Response data:', data);
+        return data;
     } catch (error) {
         console.error(`API Error (${endpoint}):`, error);
         throw error;
@@ -322,14 +282,17 @@ async function apiCall(endpoint, options = {}) {
 }
 
 async function checkConnection() {
+    console.log('Checking connection to:', API_BASE);
     try {
         const result = await apiCall('/health');
+        console.log('Health check result:', result);
         if (result.data?.status === 'ok') {
             setConnected(true);
             document.getElementById('api-status').textContent = 'ONLINE';
             document.getElementById('api-status').style.color = '#7aaa6a';
         }
     } catch (error) {
+        console.error('Connection check failed:', error);
         setConnected(false);
         document.getElementById('api-status').textContent = 'OFFLINE';
         document.getElementById('api-status').style.color = '#c45c4c';
@@ -347,10 +310,7 @@ function updateLastUpdate() {
     lastUpdate.textContent = `Last update: ${now.toLocaleTimeString()}`;
 }
 
-// ============================================
 // Data Loading
-// ============================================
-
 async function loadAllData() {
     await Promise.all([
         loadOverviewStats(),
@@ -389,7 +349,7 @@ async function loadRecentAlerts() {
         const alerts = result.data || [];
         
         if (alerts.length === 0) {
-            container.innerHTML = '<div class="empty">No alerts yet</div>';
+            container.innerHTML = '<div class="loading">No alerts</div>';
             return;
         }
         
@@ -406,7 +366,7 @@ async function loadTopRisky() {
         const tokens = result.data || [];
         
         if (tokens.length === 0) {
-            container.innerHTML = '<div class="empty">No dangerous tokens found</div>';
+            container.innerHTML = '<div class="loading">No risky tokens</div>';
             return;
         }
         
@@ -423,7 +383,7 @@ async function loadTopOpportunities() {
         const tokens = result.data || [];
         
         if (tokens.length === 0) {
-            container.innerHTML = '<div class="empty">No safer tokens found</div>';
+            container.innerHTML = '<div class="loading">No opportunities</div>';
             return;
         }
         
@@ -433,39 +393,41 @@ async function loadTopOpportunities() {
     }
 }
 
-async function loadAllTokens() {
-    const tbody = document.getElementById('tokens-tbody');
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><span>Loading tokens...</span></div></td></tr>';
+async function loadRiskyTokens() {
+    const tbody = document.getElementById('risky-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
     
     try {
-        let tokens = [];
-        
-        if (currentTokenFilter === 'all' || currentTokenFilter === 'dangerous') {
-            const risky = await apiCall(`/tokens/risky?limit=${settings.limitRisky}`);
-            tokens = tokens.concat((risky.data || []).map(t => ({ ...t, type: 'dangerous' })));
-        }
-        
-        if (currentTokenFilter === 'all' || currentTokenFilter === 'safer') {
-            const opps = await apiCall(`/tokens/opportunities?limit=${settings.limitOpportunities}`);
-            tokens = tokens.concat((opps.data || []).map(t => ({ ...t, type: 'safer' })));
-        }
-        
-        // Remove duplicates by address
-        const seen = new Set();
-        tokens = tokens.filter(t => {
-            if (seen.has(t.address)) return false;
-            seen.add(t.address);
-            return true;
-        });
+        const result = await apiCall(`/tokens/risky?limit=${settings.limitRisky}`);
+        const tokens = result.data || [];
         
         if (tokens.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty">No tokens found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">No risky tokens found</td></tr>';
             return;
         }
         
-        tbody.innerHTML = tokens.map(token => renderTokenTableRow(token)).join('');
+        tbody.innerHTML = tokens.map(token => renderTokenRow(token)).join('');
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="5" class="error">Failed to load tokens</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="error">Failed to load risky tokens</td></tr>';
+    }
+}
+
+async function loadOpportunityTokens() {
+    const tbody = document.getElementById('opportunities-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+    
+    try {
+        const result = await apiCall(`/tokens/opportunities?limit=${settings.limitOpportunities}`);
+        const tokens = result.data || [];
+        
+        if (tokens.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">No opportunity tokens found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = tokens.map(token => renderTokenRow(token, true)).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" class="error">Failed to load opportunity tokens</td></tr>';
     }
 }
 
@@ -473,7 +435,7 @@ async function loadAllAlerts() {
     const container = document.getElementById('all-alerts');
     const filterType = document.getElementById('alert-filter')?.value || '';
     
-    container.innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Loading alerts...</span></div>';
+    container.innerHTML = '<div class="loading">Loading...</div>';
     
     try {
         const url = filterType 
@@ -483,7 +445,7 @@ async function loadAllAlerts() {
         const alerts = result.data || [];
         
         if (alerts.length === 0) {
-            container.innerHTML = '<div class="empty">No alerts found</div>';
+            container.innerHTML = '<div class="loading">No alerts found</div>';
             return;
         }
         
@@ -498,23 +460,22 @@ async function lookupToken() {
     const container = document.getElementById('token-result');
     
     if (!address) {
-        showToast('Please enter a token address', 'error');
+        container.innerHTML = '<div class="error">Please enter a token address</div>';
         return;
     }
     
-    container.innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Analyzing token...</span></div>';
+    container.innerHTML = '<div class="loading">Analyzing...</div>';
     
     try {
         const result = await apiCall(`/token/${address}`);
         const token = result.data;
         
         if (!token) {
-            container.innerHTML = '<div class="error">Token not found in our database</div>';
+            container.innerHTML = '<div class="error">Token not found</div>';
             return;
         }
         
         container.innerHTML = renderTokenDetail(token);
-        showToast('Analysis complete', 'success');
     } catch (error) {
         container.innerHTML = `<div class="error">Failed to analyze token: ${error.message}</div>`;
     }
@@ -525,18 +486,16 @@ async function addToWatchlist() {
     const statusDiv = document.getElementById('watchlist-status');
     
     if (!address) {
-        showToast('Please enter a token address', 'error');
+        statusDiv.innerHTML = '<div class="error">Please enter a token address</div>';
         return;
     }
     
     try {
         await apiCall(`/watch/${address}`, { method: 'POST' });
-        showToast(`Added to watchlist!`, 'success');
         statusDiv.innerHTML = `<div class="success-msg">Added ${shortenAddress(address)} to watchlist</div>`;
         document.getElementById('watch-address').value = '';
     } catch (error) {
-        showToast('Failed to add to watchlist', 'error');
-        statusDiv.innerHTML = `<div class="error">Failed to add to watchlist</div>`;
+        statusDiv.innerHTML = `<div class="error">Failed to add to watchlist: ${error.message}</div>`;
     }
 }
 
@@ -545,43 +504,32 @@ async function removeFromWatchlist() {
     const statusDiv = document.getElementById('watchlist-status');
     
     if (!address) {
-        showToast('Please enter a token address', 'error');
+        statusDiv.innerHTML = '<div class="error">Please enter a token address</div>';
         return;
     }
     
     try {
         await apiCall(`/watch/${address}`, { method: 'DELETE' });
-        showToast('Removed from watchlist', 'info');
         statusDiv.innerHTML = `<div class="success-msg">Removed ${shortenAddress(address)} from watchlist</div>`;
         document.getElementById('watch-address').value = '';
     } catch (error) {
-        showToast('Failed to remove from watchlist', 'error');
-        statusDiv.innerHTML = `<div class="error">Failed to remove from watchlist</div>`;
+        statusDiv.innerHTML = `<div class="error">Failed to remove from watchlist: ${error.message}</div>`;
     }
 }
 
-// ============================================
 // Render Functions
-// ============================================
-
-const COPY_ICON = `<svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-
 function renderAlertItem(alert) {
     const severity = alert.severity?.toLowerCase() || 'medium';
     const time = formatTime(alert.created_at);
     
-    // Convert alert type to friendlier language
-    let alertLabel = alert.alert_type?.toUpperCase() || 'ALERT';
-    if (alertLabel === 'RUG_WARNING') alertLabel = 'SCAM WARNING';
-    
     return `
         <div class="alert-item">
             <div class="alert-header">
-                <span class="alert-type ${severity}">${alertLabel}</span>
+                <span class="alert-type ${severity}">${alert.alert_type?.toUpperCase() || 'ALERT'}</span>
                 <span class="alert-time">${time}</span>
             </div>
             <div class="alert-message">${alert.message || 'No message'}</div>
-            <div class="alert-token" onclick="copyAddress('${alert.token_address}')">${shortenAddress(alert.token_address)} ${COPY_ICON}</div>
+            <div class="alert-token" onclick="copyAddress('${alert.token_address}')">${shortenAddress(alert.token_address)}</div>
         </div>
     `;
 }
@@ -589,43 +537,37 @@ function renderAlertItem(alert) {
 function renderTokenItem(token, scoreType) {
     const score = scoreType === 'risk' ? token.risk_score : token.opportunity_score;
     const scoreClass = getScoreClass(score, scoreType === 'risk');
-    const label = getScoreLabel(score, scoreType === 'risk');
     
     return `
         <div class="token-item">
-            <span class="token-address" onclick="copyAddress('${token.address}')">${shortenAddress(token.address)} ${COPY_ICON}</span>
-            <span class="score ${scoreClass}">
-                <span>${score ?? '--'}</span>
-                <span class="score-label">${label}</span>
-            </span>
+            <span class="token-address" onclick="copyAddress('${token.address}')">${shortenAddress(token.address)}</span>
+            <span class="score ${scoreClass}">${score ?? '--'}</span>
         </div>
     `;
 }
 
-function renderTokenTableRow(token) {
+function renderTokenRow(token, opportunityFirst = false) {
     const riskClass = getScoreClass(token.risk_score, true);
     const oppClass = getScoreClass(token.opportunity_score, false);
-    const riskLabel = getScoreLabel(token.risk_score, true);
-    const oppLabel = getScoreLabel(token.opportunity_score, false);
     const time = formatTime(token.timestamp);
+    
+    if (opportunityFirst) {
+        return `
+            <tr>
+                <td><span class="address" onclick="copyAddress('${token.address}')">${shortenAddress(token.address)}</span></td>
+                <td><span class="score ${oppClass}">${token.opportunity_score ?? '--'}</span></td>
+                <td><span class="score ${riskClass}">${token.risk_score ?? '--'}</span></td>
+                <td>${token.confidence || '--'}</td>
+                <td>${time}</td>
+            </tr>
+        `;
+    }
     
     return `
         <tr>
-            <td><span class="address" onclick="copyAddress('${token.address}')">${shortenAddress(token.address)} ${COPY_ICON}</span></td>
-            <td>
-                <span class="score ${riskClass}">
-                    <div class="score-bar"><div class="score-bar-fill" style="width: ${token.risk_score || 0}%"></div></div>
-                    <span>${token.risk_score ?? '--'}</span>
-                    <span class="score-label">${riskLabel}</span>
-                </span>
-            </td>
-            <td>
-                <span class="score ${oppClass}">
-                    <div class="score-bar"><div class="score-bar-fill" style="width: ${token.opportunity_score || 0}%"></div></div>
-                    <span>${token.opportunity_score ?? '--'}</span>
-                    <span class="score-label">${oppLabel}</span>
-                </span>
-            </td>
+            <td><span class="address" onclick="copyAddress('${token.address}')">${shortenAddress(token.address)}</span></td>
+            <td><span class="score ${riskClass}">${token.risk_score ?? '--'}</span></td>
+            <td><span class="score ${oppClass}">${token.opportunity_score ?? '--'}</span></td>
             <td>${token.confidence || '--'}</td>
             <td>${time}</td>
         </tr>
@@ -635,32 +577,20 @@ function renderTokenTableRow(token) {
 function renderTokenDetail(token) {
     const riskClass = getScoreClass(token.risk_score, true);
     const oppClass = getScoreClass(token.opportunity_score, false);
-    const riskLabel = getScoreLabel(token.risk_score, true);
-    const oppLabel = getScoreLabel(token.opportunity_score, false);
     
     return `
         <div class="token-detail-grid">
             <div class="detail-item">
                 <div class="detail-label">ADDRESS</div>
-                <div class="detail-value" style="font-size: 11px; cursor: pointer;" onclick="copyAddress('${token.address}')">${token.address} ${COPY_ICON}</div>
+                <div class="detail-value" style="font-size: 11px; cursor: pointer;" onclick="copyAddress('${token.address}')">${token.address}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">DANGER LEVEL</div>
-                <div class="detail-value">
-                    <span class="score ${riskClass}">
-                        <span>${token.risk_score ?? '--'}/100</span>
-                        <span class="score-label">${riskLabel}</span>
-                    </span>
-                </div>
+                <div class="detail-label">RISK SCORE</div>
+                <div class="detail-value"><span class="score ${riskClass}">${token.risk_score ?? '--'}</span></div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">SAFETY SCORE</div>
-                <div class="detail-value">
-                    <span class="score ${oppClass}">
-                        <span>${token.opportunity_score ?? '--'}/100</span>
-                        <span class="score-label">${oppLabel}</span>
-                    </span>
-                </div>
+                <div class="detail-label">OPPORTUNITY SCORE</div>
+                <div class="detail-value"><span class="score ${oppClass}">${token.opportunity_score ?? '--'}</span></div>
             </div>
             <div class="detail-item">
                 <div class="detail-label">PRICE (USD)</div>
@@ -679,24 +609,28 @@ function renderTokenDetail(token) {
                 <div class="detail-value">${token.holder_count ?? '--'}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">WHALE CONCENTRATION</div>
+                <div class="detail-label">TOP 10 HOLDERS</div>
                 <div class="detail-value">${token.top_10_pct ? token.top_10_pct.toFixed(1) + '%' : '--'}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">DATA QUALITY</div>
+                <div class="detail-label">CONFIDENCE</div>
                 <div class="detail-value">${token.confidence || '--'}</div>
             </div>
         </div>
     `;
 }
 
-// ============================================
 // Utility Functions
-// ============================================
-
 function shortenAddress(address) {
     if (!address) return '--';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function copyAddress(address) {
+    navigator.clipboard.writeText(address).then(() => {
+        // Could show a toast here
+        console.log('Copied:', address);
+    });
 }
 
 function formatTime(timestamp) {
@@ -722,31 +656,26 @@ function getScoreClass(score, isRisk = true) {
         if (score >= 25) return 'medium';
         return 'low';
     } else {
-        if (score >= 75) return 'low';
+        if (score >= 75) return 'low'; // high opportunity = green
         if (score >= 50) return 'medium';
         if (score >= 25) return 'high';
         return 'critical';
     }
 }
 
-function getScoreLabel(score, isRisk = true) {
-    if (score === null || score === undefined) return '';
-    
-    if (isRisk) {
-        if (score >= 75) return 'DANGER';
-        if (score >= 50) return 'RISKY';
-        if (score >= 25) return 'CAUTION';
-        return 'SAFER';
-    } else {
-        if (score >= 75) return 'SAFER';
-        if (score >= 50) return 'OKAY';
-        if (score >= 25) return 'CAUTION';
-        return 'RISKY';
-    }
-}
+// Load data when switching tabs
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const targetId = tab.dataset.tab;
+        
+        if (targetId === 'risky') loadRiskyTokens();
+        if (targetId === 'opportunities') loadOpportunityTokens();
+        if (targetId === 'alerts') loadAllAlerts();
+    });
+});
 
 // ============================================
-// ML Data / Track Record Functions
+// ML Data Tab Functions
 // ============================================
 
 async function loadMLStats() {
@@ -763,6 +692,8 @@ async function loadMLStats() {
         
         // Update outcome bars
         const outcomes = stats.outcomes || {};
+        const total = stats.completed || 1;
+        
         const survived = outcomes.SURVIVED || 0;
         const rugged = outcomes.RUGGED || 0;
         const dead = outcomes.DEAD || 0;
@@ -781,7 +712,7 @@ async function loadMLStats() {
         document.getElementById('bar-mooned').style.width = `${(mooned / maxCount) * 100}%`;
         
     } catch (error) {
-        console.error('Failed to load stats:', error);
+        console.error('Failed to load ML stats:', error);
     }
 }
 
@@ -790,7 +721,7 @@ async function loadReviews() {
     const statusFilter = document.getElementById('review-filter').value;
     const outcomeFilter = document.getElementById('outcome-filter').value;
     
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><span>Loading history...</span></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
     
     try {
         let url = '/reviews?limit=100';
@@ -801,7 +732,7 @@ async function loadReviews() {
         const reviews = response.data || [];
         
         if (reviews.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty">No history yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">No reviews found</td></tr>';
             return;
         }
         
@@ -809,21 +740,22 @@ async function loadReviews() {
         
     } catch (error) {
         console.error('Failed to load reviews:', error);
-        tbody.innerHTML = '<tr><td colspan="5" class="error">Failed to load history</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="error">Failed to load reviews</td></tr>';
     }
 }
 
 function renderReviewRow(review) {
     const shortAddr = shortenAddress(review.token_address);
     
+    // Initial price
     const initialPrice = review.initial_price_usd ? 
         '$' + parseFloat(review.initial_price_usd).toFixed(8) : '--';
     
-    // Day 1 status - use friendlier language
-    let day1Status = '<span class="status-pending">CHECKING</span>';
+    // Day 1 status
+    let day1Status = '<span class="status-pending">PENDING</span>';
     if (review.day1_reviewed) {
         if (review.day1_rugged) {
-            day1Status = `<span class="status-scam">SCAM</span>`;
+            day1Status = `<span class="status-rugged">RUGGED</span>`;
         } else {
             const change = review.day1_price_change_pct;
             const changeClass = change && parseFloat(change) >= 0 ? 'positive' : 'negative';
@@ -832,10 +764,10 @@ function renderReviewRow(review) {
     }
     
     // Week 1 status
-    let week1Status = '<span class="status-pending">CHECKING</span>';
+    let week1Status = '<span class="status-pending">PENDING</span>';
     if (review.week1_reviewed) {
         if (review.week1_rugged) {
-            week1Status = `<span class="status-scam">SCAM</span>`;
+            week1Status = `<span class="status-rugged">RUGGED</span>`;
         } else {
             const change = review.week1_price_change_pct;
             const changeClass = change && parseFloat(change) >= 0 ? 'positive' : 'negative';
@@ -843,35 +775,20 @@ function renderReviewRow(review) {
         }
     }
     
-    // Final outcome - use friendlier language
+    // Final outcome
     let outcomeClass = '';
-    let outcomeLabel = review.final_outcome || '--';
-    
     switch (review.final_outcome) {
-        case 'SURVIVED': 
-            outcomeClass = 'outcome-survived'; 
-            outcomeLabel = 'SURVIVED';
-            break;
-        case 'RUGGED': 
-            outcomeClass = 'outcome-scam'; 
-            outcomeLabel = 'SCAM';
-            break;
-        case 'DEAD': 
-            outcomeClass = 'outcome-failed'; 
-            outcomeLabel = 'FAILED';
-            break;
-        case 'MOONED': 
-            outcomeClass = 'outcome-bigwin'; 
-            outcomeLabel = 'BIG WIN';
-            break;
+        case 'SURVIVED': outcomeClass = 'outcome-survived'; break;
+        case 'RUGGED': outcomeClass = 'outcome-rugged'; break;
+        case 'DEAD': outcomeClass = 'outcome-dead'; break;
+        case 'MOONED': outcomeClass = 'outcome-mooned'; break;
     }
-    
     const outcome = review.final_outcome ? 
-        `<span class="${outcomeClass}">${outcomeLabel}</span>` : '--';
+        `<span class="${outcomeClass}">${review.final_outcome}</span>` : '--';
     
     return `
         <tr>
-            <td title="${review.token_address}" style="cursor: pointer;" onclick="copyAddress('${review.token_address}')">${shortAddr} ${COPY_ICON}</td>
+            <td title="${review.token_address}" style="cursor: pointer;" onclick="copyAddress('${review.token_address}')">${shortAddr}</td>
             <td>${initialPrice}</td>
             <td>${day1Status}</td>
             <td>${week1Status}</td>
@@ -886,7 +803,7 @@ async function exportReviewsCSV() {
         const data = response.data;
         
         if (!data.rows || data.rows.length === 0) {
-            showToast('No completed data to download', 'info');
+            alert('No completed reviews to export');
             return;
         }
         
@@ -911,19 +828,17 @@ async function exportReviewsCSV() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `meme-monitor-history-${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `opportunity-reviews-${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
         
-        showToast('Spreadsheet downloaded!', 'success');
-        
     } catch (error) {
-        console.error('Failed to export:', error);
-        showToast('Failed to download', 'error');
+        console.error('Failed to export CSV:', error);
+        alert('Failed to export CSV');
     }
 }
 
-// Event listeners for Track Record tab
+// Event listeners for ML Data tab
 document.getElementById('refresh-reviews')?.addEventListener('click', () => {
     loadMLStats();
     loadReviews();
@@ -932,3 +847,14 @@ document.getElementById('refresh-reviews')?.addEventListener('click', () => {
 document.getElementById('review-filter')?.addEventListener('change', loadReviews);
 document.getElementById('outcome-filter')?.addEventListener('change', loadReviews);
 document.getElementById('export-csv')?.addEventListener('click', exportReviewsCSV);
+
+// Add ML Data tab to tab switch handler
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const targetId = tab.dataset.tab;
+        if (targetId === 'ml-data') {
+            loadMLStats();
+            loadReviews();
+        }
+    });
+});
