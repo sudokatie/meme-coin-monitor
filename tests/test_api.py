@@ -97,10 +97,10 @@ class TestRiskyTokensEndpoint:
     def test_risky_rejects_invalid_limit(self, client):
         """Should reject invalid limit."""
         response = client.get("/tokens/risky?limit=0")
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422  # Validation error (below min of 1)
 
-        response = client.get("/tokens/risky?limit=500")
-        assert response.status_code == 422
+        response = client.get("/tokens/risky?limit=10001")
+        assert response.status_code == 422  # Validation error (above max of 10000)
 
 
 class TestOpportunitiesEndpoint:
