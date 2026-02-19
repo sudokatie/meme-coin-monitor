@@ -18,6 +18,7 @@ class TokenData:
     address: str
     name: str
     symbol: str
+    chain: str = "solana"  # solana, base, arbitrum
     price_usd: str | None = None
     market_cap: str | None = None
     volume_24h: str | None = None

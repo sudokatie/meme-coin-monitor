@@ -1,6 +1,6 @@
 # Meme Coin Monitor
 
-A Python system for monitoring Solana meme coins, detecting fraud patterns, and identifying rug pulls before they happen.
+A Python system for monitoring meme coins across Solana, Base, and Arbitrum chains, detecting fraud patterns, and identifying rug pulls before they happen.
 
 Because losing money to obvious scams is embarrassing, and I'd rather be embarrassed by my trading decisions than my due diligence.
 
@@ -101,7 +101,31 @@ Edit `config/default.yaml` or use environment variables:
 | Variable | Description |
 |----------|-------------|
 | `SOLANA_RPC_URL` | Solana RPC endpoint |
+| `BASE_RPC_URL` | Base chain RPC endpoint |
+| `ARBITRUM_RPC_URL` | Arbitrum RPC endpoint |
 | `DATABASE_URL` | Database connection |
+
+### Multi-Chain Support
+
+The monitor supports multiple EVM-compatible chains in addition to Solana:
+
+- **Solana** (default, always enabled)
+- **Base** (Coinbase L2) - enable in config
+- **Arbitrum One** - enable in config
+
+To enable additional chains, add to your `config/local.yaml`:
+
+```yaml
+ingestion:
+  base_chain:
+    enabled: true
+    endpoint: https://mainnet.base.org  # or your preferred RPC
+  arbitrum_chain:
+    enabled: true
+    endpoint: https://arb1.arbitrum.io/rpc
+```
+
+Each chain uses standard ERC-20 calls for token info. The unified `TokenData` model includes a `chain` field to identify the source chain.
 | `ALERT_WEBHOOK_URL` | Webhook for alerts |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token |
 | `TELEGRAM_CHAT_ID` | Where to send alerts |

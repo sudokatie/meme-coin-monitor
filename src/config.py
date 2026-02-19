@@ -46,6 +46,29 @@ class SolanaRpcConfig(BaseModel):
     helius_base_url: str = "https://mainnet.helius-rpc.com"
 
 
+class EvmChainConfig(BaseModel):
+    """EVM chain RPC configuration (Base, Arbitrum, etc.)."""
+
+    enabled: bool = False
+    endpoint: str = ""
+    timeout_seconds: int = 30
+    api_key: str | None = None
+
+
+class BaseChainConfig(EvmChainConfig):
+    """Base chain (Coinbase L2) configuration."""
+
+    enabled: bool = False
+    endpoint: str = "https://mainnet.base.org"
+
+
+class ArbitrumChainConfig(EvmChainConfig):
+    """Arbitrum One chain configuration."""
+
+    enabled: bool = False
+    endpoint: str = "https://arb1.arbitrum.io/rpc"
+
+
 class PumpFunConfig(BaseModel):
     """Pump.fun monitoring configuration."""
 
@@ -60,10 +83,22 @@ class IngestionConfig(BaseModel):
     dex_screener: DexScreenerConfig = Field(default_factory=DexScreenerConfig)
     solana_rpc: SolanaRpcConfig = Field(default_factory=SolanaRpcConfig)
     pump_fun: PumpFunConfig = Field(default_factory=PumpFunConfig)
+    base_chain: BaseChainConfig = Field(default_factory=BaseChainConfig)
+    arbitrum_chain: ArbitrumChainConfig = Field(default_factory=ArbitrumChainConfig)
     
     # Scheduler settings (can be increased with multiple API keys)
     max_tokens_per_cycle: int = 10  # Max new tokens to process per discovery cycle
     token_processing_delay: float = 3.0  # Seconds between processing each token
+
+    @property
+    def enabled_chains(self) -> list[str]:
+        """Get list of enabled chains."""
+        chains = ["solana"]  # Solana always enabled
+        if self.base_chain.enabled:
+            chains.append("base")
+        if self.arbitrum_chain.enabled:
+            chains.append("arbitrum")
+        return chains
 
 
 class AnalysisConfig(BaseModel):
