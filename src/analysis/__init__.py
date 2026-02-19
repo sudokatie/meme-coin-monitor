@@ -4,6 +4,7 @@ from src.analysis.base import AnalysisResult, BaseAnalyzer, Signal
 from src.analysis.contract_analyzer import ContractAnalysis, ContractAnalyzer
 from src.analysis.holder_analyzer import HolderAnalysis, HolderAnalyzer
 from src.analysis.liquidity_analyzer import LiquidityAnalysis, LiquidityAnalyzer
+from src.analysis.pattern_learner import FeatureStats, LearnedPatterns, PatternLearner
 from src.analysis.pattern_matcher import PatternAnalysis, PatternMatcher
 from src.analysis.trading_analyzer import TradingAnalysis, TradingAnalyzer
 
@@ -21,4 +22,7 @@ __all__ = [
     "TradingAnalysis",
     "PatternMatcher",
     "PatternAnalysis",
+    "PatternLearner",
+    "LearnedPatterns",
+    "FeatureStats",
 ]
