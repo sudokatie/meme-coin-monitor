@@ -3,9 +3,13 @@
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from src.analysis.base import AnalysisResult, Severity, Signal
 from src.config import RiskWeightsConfig, ThresholdsConfig
+
+if TYPE_CHECKING:
+    from src.analysis.pattern_learner import PatternLearner
 
 
 logger = logging.getLogger(__name__)
@@ -79,6 +83,7 @@ class RiskScorer:
         self,
         weights: RiskWeightsConfig | None = None,
         thresholds: ThresholdsConfig | None = None,
+        pattern_learner: "PatternLearner | None" = None,
     ) -> None:
         """
         Initialize risk scorer.
@@ -86,9 +91,11 @@ class RiskScorer:
         Args:
             weights: Risk signal weights
             thresholds: Score thresholds
+            pattern_learner: Optional trained pattern learner for historical adjustments
         """
         self._weights = weights or RiskWeightsConfig()
         self._thresholds = thresholds or ThresholdsConfig()
+        self._pattern_learner = pattern_learner
 
     def _get_weight(self, signal_name: str) -> int:
         """Get weight for a signal."""
@@ -117,12 +124,17 @@ class RiskScorer:
             return RiskCategory.MEDIUM
         return RiskCategory.LOW
 
-    def score(self, analyses: dict[str, AnalysisResult]) -> RiskScore:
+    def score(
+        self,
+        analyses: dict[str, AnalysisResult],
+        token_features: dict[str, float | None] | None = None,
+    ) -> RiskScore:
         """
         Calculate risk score from analysis results.
 
         Args:
             analyses: Dict of analyzer name to AnalysisResult
+            token_features: Optional features for pattern learning adjustment
 
         Returns:
             RiskScore with total, category, and signal breakdown
@@ -155,10 +167,28 @@ class RiskScorer:
                 contribution=contribution,
             ))
 
+        # Apply learned pattern adjustment if available
+        pattern_adjustment = 0
+        if (
+            self._pattern_learner is not None
+            and self._pattern_learner.is_trained
+            and token_features is not None
+        ):
+            pattern_adjustment = self._pattern_learner.get_risk_adjustment(token_features)
+            if pattern_adjustment != 0:
+                raw_score += pattern_adjustment
+                scored_signals.append(ScoredSignal(
+                    name="LEARNED_PATTERN_ADJUSTMENT",
+                    severity="MEDIUM",
+                    weight=abs(pattern_adjustment),
+                    contribution=pattern_adjustment,
+                ))
+                logger.debug(f"Applied pattern learning adjustment: {pattern_adjustment}")
+
         if has_instant_critical:
             final_score = 100
         else:
-            final_score = min(raw_score, 100)
+            final_score = min(max(raw_score, 0), 100)  # Clamp to 0-100
 
         category = self._categorize(final_score)
 
