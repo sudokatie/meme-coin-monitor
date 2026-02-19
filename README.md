@@ -13,11 +13,13 @@ Defensive-first: avoid losses before seeking gains. The goal isn't to find the n
 ## Features
 
 - Real-time monitoring of new token launches via DexScreener
+- **Multi-chain support**: Solana (default), Base, and Arbitrum
 - Contract analysis (mint/freeze authority detection - the classic rug signals)
 - Holder distribution analysis (whale detection, concentration metrics)
 - Liquidity analysis (pool depth, slippage estimation)
 - Trading pattern analysis (wash trading, pump detection)
 - Pattern matching against known scams and scammer wallets
+- **Historical pattern learning**: learns from past rugs to improve detection
 - Risk scoring (0-100 with LOW/MEDIUM/HIGH/CRITICAL categories)
 - Opportunity scoring for tokens that pass the smell test
 - Alert system with webhook and Telegram delivery
@@ -31,13 +33,18 @@ meme-coin-monitor/
 │   ├── main.py              # Entry point
 │   ├── config.py            # Config loading
 │   ├── storage/             # Database layer
-│   ├── ingestion/           # Data sources (DexScreener, Solana RPC)
+│   ├── ingestion/           # Data sources (DexScreener, Solana RPC, EVM RPCs)
+│   │   ├── dex_screener.py  # DexScreener API client
+│   │   ├── solana_rpc.py    # Solana chain RPC
+│   │   ├── evm_rpc.py       # Base/Arbitrum chain RPCs
+│   │   └── scheduler.py     # Multi-chain discovery coordinator
 │   ├── analysis/            # The interesting stuff
 │   │   ├── contract_analyzer.py
 │   │   ├── holder_analyzer.py
 │   │   ├── liquidity_analyzer.py
 │   │   ├── trading_analyzer.py
-│   │   └── pattern_matcher.py
+│   │   ├── pattern_matcher.py
+│   │   └── pattern_learner.py  # Historical outcome learning
 │   ├── scoring/             # Risk and opportunity scoring
 │   ├── alerts/              # Webhook and Telegram delivery
 │   └── api/                 # FastAPI server
@@ -126,6 +133,18 @@ ingestion:
 ```
 
 Each chain uses standard ERC-20 calls for token info. The unified `TokenData` model includes a `chain` field to identify the source chain.
+
+### Pattern Learning
+
+The monitor learns from historical outcomes to improve risk detection over time:
+
+- Tracks token outcomes (SURVIVED, RUGGED, DEAD, MOONED) via follow-up reviews
+- Extracts features from rugged vs survived tokens
+- Calculates risk adjustments based on learned patterns
+- Requires minimum 20 samples before applying adjustments
+
+The `PatternLearner` class automatically adjusts risk scores based on historical data. No manual tuning needed - it learns what actually matters from your data.
+
 | `ALERT_WEBHOOK_URL` | Webhook for alerts |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token |
 | `TELEGRAM_CHAT_ID` | Where to send alerts |
