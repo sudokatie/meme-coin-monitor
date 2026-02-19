@@ -8,12 +8,20 @@ from typing import Awaitable, Callable
 from src.config import IngestionConfig
 from src.ingestion.base import TokenData
 from src.ingestion.dex_screener import DexScreenerClient
+from src.ingestion.evm_rpc import ArbitrumRpcClient, BaseChainRpcClient
 from src.ingestion.pump_fun import PumpFunClient
 
 
 logger = logging.getLogger(__name__)
 
 AnalysisCallback = Callable[[str, TokenData], Awaitable[None]]
+
+# DexScreener chain identifiers
+CHAIN_IDS = {
+    "solana": "solana",
+    "base": "base",
+    "arbitrum": "arbitrum",
+}
 
 
 class IngestionScheduler:
@@ -24,6 +32,8 @@ class IngestionScheduler:
         config: IngestionConfig,
         dex_client: DexScreenerClient,
         pump_client: PumpFunClient,
+        base_client: BaseChainRpcClient | None = None,
+        arbitrum_client: ArbitrumRpcClient | None = None,
         on_token_data: AnalysisCallback | None = None,
     ) -> None:
         """
@@ -33,15 +43,25 @@ class IngestionScheduler:
             config: Ingestion configuration
             dex_client: DEX Screener client
             pump_client: Pump.fun client
+            base_client: Base chain RPC client (optional)
+            arbitrum_client: Arbitrum RPC client (optional)
             on_token_data: Callback when new token data is received
         """
         self._config = config
         self._dex_client = dex_client
         self._pump_client = pump_client
+        self._base_client = base_client
+        self._arbitrum_client = arbitrum_client
         self._on_token_data = on_token_data
 
         self._watchlist: set[str] = set()
         self._seen_tokens: set[str] = set()
+        # Track seen tokens per chain
+        self._seen_tokens_by_chain: dict[str, set[str]] = {
+            "solana": set(),
+            "base": set(),
+            "arbitrum": set(),
+        }
         self._running = False
         self._tasks: list[asyncio.Task[None]] = []
 
@@ -188,6 +208,71 @@ class IngestionScheduler:
 
         logger.info("DexScreener discovery loop stopped")
 
+    async def _poll_evm_chain_discovery(self, chain: str) -> None:
+        """
+        Poll DexScreener for new tokens on an EVM chain.
+
+        Args:
+            chain: Chain identifier (base, arbitrum)
+        """
+        if chain not in CHAIN_IDS:
+            logger.error(f"Unknown chain: {chain}")
+            return
+
+        logger.info(f"Starting {chain} discovery loop")
+        poll_interval = self._config.dex_screener.poll_interval_seconds * 2  # Less aggressive for EVM
+        max_tokens_per_cycle = self._config.max_tokens_per_cycle // 2  # Fewer tokens for EVM
+        delay_between_tokens = self._config.token_processing_delay
+
+        while self._running:
+            try:
+                # Use DexScreener search for trending tokens on this chain
+                # Note: boosts/profiles are Solana-focused, so we use search
+                search_terms = ["meme", "pepe", "doge", "shib", "moon", "inu"]
+                all_addresses: set[str] = set()
+
+                for term in search_terms[:2]:  # Limit searches per cycle
+                    results = await self._dex_client.search(term)
+                    for token in results:
+                        if token.chain == chain:
+                            all_addresses.add(token.address)
+
+                # Filter to new tokens
+                seen = self._seen_tokens_by_chain.get(chain, set())
+                new_addresses = [a for a in all_addresses if a not in seen]
+
+                if new_addresses:
+                    to_process = new_addresses[:max_tokens_per_cycle]
+                    logger.info(f"[{chain}] Discovered {len(new_addresses)} tokens, processing {len(to_process)}")
+
+                    # Mark as seen
+                    for addr in new_addresses:
+                        self._seen_tokens_by_chain[chain].add(addr)
+
+                    # Fetch and analyze
+                    tokens = await self._dex_client.fetch_batch(to_process, chain=chain)
+
+                    for token in tokens:
+                        logger.info(f"[{chain}] New token: {token.symbol} ({token.address[:10]}...)")
+                        await self._notify(token.address, token)
+                        await asyncio.sleep(delay_between_tokens)
+
+                # Cap seen tokens
+                if len(self._seen_tokens_by_chain[chain]) > 5000:
+                    self._seen_tokens_by_chain[chain] = set(
+                        list(self._seen_tokens_by_chain[chain])[-2500:]
+                    )
+
+                await asyncio.sleep(poll_interval)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[{chain}] Discovery error: {e}")
+                await asyncio.sleep(10)
+
+        logger.info(f"{chain} discovery loop stopped")
+
     async def start(self) -> None:
         """Start the scheduler."""
         if self._running:
@@ -201,12 +286,23 @@ class IngestionScheduler:
             # Watchlist polling for manually added tokens
             task = asyncio.create_task(self._poll_watchlist())
             self._tasks.append(task)
-            # Auto-discovery via DexScreener boosts/profiles
+            # Auto-discovery via DexScreener boosts/profiles (Solana)
             task = asyncio.create_task(self._poll_dex_discovery())
             self._tasks.append(task)
 
         if self._config.pump_fun.enabled:
             task = asyncio.create_task(self._poll_new_launches())
+            self._tasks.append(task)
+
+        # Start EVM chain discovery if enabled
+        if self._config.base_chain.enabled:
+            logger.info("Base chain monitoring enabled")
+            task = asyncio.create_task(self._poll_evm_chain_discovery("base"))
+            self._tasks.append(task)
+
+        if self._config.arbitrum_chain.enabled:
+            logger.info("Arbitrum chain monitoring enabled")
+            task = asyncio.create_task(self._poll_evm_chain_discovery("arbitrum"))
             self._tasks.append(task)
 
         logger.info(f"Scheduler started with {len(self._tasks)} polling tasks")

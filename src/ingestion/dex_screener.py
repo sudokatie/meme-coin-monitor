@@ -114,17 +114,20 @@ class DexScreenerClient(BaseIngester):
             logger.warning(f"DEX Screener request error: {e}")
             return None
 
-    def _parse_token_data(self, data: dict[str, Any]) -> TokenData | None:
+    def _parse_token_data(self, data: dict[str, Any], chain: str | None = None) -> TokenData | None:
         """Parse API response into TokenData."""
         if not data:
             return None
 
         try:
             base_token = data.get("baseToken", {})
+            # Detect chain from response if not provided
+            detected_chain = chain or data.get("chainId", self.DEFAULT_CHAIN)
             return TokenData(
                 address=base_token.get("address", data.get("tokenAddress", "")),
                 name=base_token.get("name", "Unknown"),
                 symbol=base_token.get("symbol", "???"),
+                chain=detected_chain,
                 price_usd=data.get("priceUsd"),
                 market_cap=str(data.get("marketCap")) if data.get("marketCap") else None,
                 volume_24h=str(data.get("volume", {}).get("h24")) if data.get("volume") else None,
@@ -159,7 +162,7 @@ class DexScreenerClient(BaseIngester):
         if not pairs:
             return None
 
-        return self._parse_token_data(pairs[0])
+        return self._parse_token_data(pairs[0], chain)
 
     async def fetch_batch(
         self, addresses: list[str], chain: str | None = None
@@ -194,7 +197,7 @@ class DexScreenerClient(BaseIngester):
 
         seen_addresses: set[str] = set()
         for pair in pairs:
-            token_data = self._parse_token_data(pair)
+            token_data = self._parse_token_data(pair, chain)
             if token_data and token_data.address not in seen_addresses:
                 results.append(token_data)
                 seen_addresses.add(token_data.address)
