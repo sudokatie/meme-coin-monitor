@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.alerts.telegram import TelegramChannel
+from src.alerts.telegram import TelegramChannel, TelegramThresholds
 from src.alerts.webhook import WebhookChannel
 from src.storage.models import Alert
 
@@ -101,6 +101,182 @@ class TestTelegramChannel:
         assert channel._severity_prefix("MEDIUM") == "[*]"
         assert channel._severity_prefix("LOW") == "[-]"
         assert channel._severity_prefix("UNKNOWN") == "[?]"  # Default
+
+
+class TestTelegramThresholds:
+    """Tests for TelegramThresholds."""
+
+    def test_default_thresholds_allow_all(self):
+        """Default thresholds should allow all alerts."""
+        thresholds = TelegramThresholds()
+        
+        alert = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="HIGH",
+            message="Test",
+            data={"risk_score": 50},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        assert thresholds.should_send(alert) is True
+
+    def test_min_risk_score_filters(self):
+        """Alerts below min risk score should be filtered."""
+        thresholds = TelegramThresholds(min_risk_score=60)
+        
+        low_risk = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="HIGH",
+            message="Test",
+            data={"risk_score": 50},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        high_risk = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="CRITICAL",
+            message="Test",
+            data={"risk_score": 75},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        assert thresholds.should_send(low_risk) is False
+        assert thresholds.should_send(high_risk) is True
+
+    def test_min_opportunity_score_filters(self):
+        """Alerts below min opportunity score should be filtered."""
+        thresholds = TelegramThresholds(min_opportunity_score=70)
+        
+        weak = Alert(
+            token_address="test",
+            alert_type="OPPORTUNITY",
+            severity="MEDIUM",
+            message="Test",
+            data={"opportunity_score": 50},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        strong = Alert(
+            token_address="test",
+            alert_type="OPPORTUNITY",
+            severity="HIGH",
+            message="Test",
+            data={"opportunity_score": 80},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        assert thresholds.should_send(weak) is False
+        assert thresholds.should_send(strong) is True
+
+    def test_allowed_alert_types_filter(self):
+        """Only allowed alert types should pass."""
+        thresholds = TelegramThresholds(allowed_alert_types=["OPPORTUNITY"])
+        
+        rug_warning = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="HIGH",
+            message="Test",
+            data={},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        opportunity = Alert(
+            token_address="test",
+            alert_type="OPPORTUNITY",
+            severity="HIGH",
+            message="Test",
+            data={},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        assert thresholds.should_send(rug_warning) is False
+        assert thresholds.should_send(opportunity) is True
+
+    def test_allowed_severities_filter(self):
+        """Only allowed severities should pass."""
+        thresholds = TelegramThresholds(allowed_severities=["CRITICAL"])
+        
+        high = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="HIGH",
+            message="Test",
+            data={},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        critical = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="CRITICAL",
+            message="Test",
+            data={},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        assert thresholds.should_send(high) is False
+        assert thresholds.should_send(critical) is True
+
+    def test_combined_filters(self):
+        """Multiple filters should all apply."""
+        thresholds = TelegramThresholds(
+            min_risk_score=50,
+            allowed_severities=["CRITICAL", "HIGH"],
+        )
+        
+        # Low risk + critical severity - fails risk check
+        low_risk_critical = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="CRITICAL",
+            message="Test",
+            data={"risk_score": 30},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        # High risk + medium severity - fails severity check
+        high_risk_medium = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="MEDIUM",
+            message="Test",
+            data={"risk_score": 70},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        # High risk + high severity - passes both
+        high_risk_high = Alert(
+            token_address="test",
+            alert_type="RUG_WARNING",
+            severity="HIGH",
+            message="Test",
+            data={"risk_score": 70},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        assert thresholds.should_send(low_risk_critical) is False
+        assert thresholds.should_send(high_risk_medium) is False
+        assert thresholds.should_send(high_risk_high) is True
+
+    def test_risk_score_only_applies_to_rug_warning(self):
+        """Min risk score should only filter RUG_WARNING alerts."""
+        thresholds = TelegramThresholds(min_risk_score=80)
+        
+        # PATTERN_MATCH with low risk score should still pass
+        pattern_match = Alert(
+            token_address="test",
+            alert_type="PATTERN_MATCH",
+            severity="CRITICAL",
+            message="Test",
+            data={"risk_score": 50},
+            created_at=datetime.now(timezone.utc),
+        )
+        
+        assert thresholds.should_send(pattern_match) is True
 
 
 class TestWebhookChannel:

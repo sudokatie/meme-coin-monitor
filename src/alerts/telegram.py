@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -11,6 +12,58 @@ from src.storage.models import Alert
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TelegramThresholds:
+    """Configurable thresholds for Telegram alerts.
+    
+    Allows filtering which alerts are sent to Telegram based on
+    risk score, opportunity score, and alert type.
+    """
+    
+    # Minimum risk score to send RUG_WARNING alerts (0-100)
+    min_risk_score: int = 0
+    
+    # Minimum opportunity score to send OPPORTUNITY alerts (0-100)
+    min_opportunity_score: int = 0
+    
+    # Alert types to include (empty = all)
+    allowed_alert_types: list[str] = field(default_factory=list)
+    
+    # Severity levels to include (empty = all)
+    allowed_severities: list[str] = field(default_factory=list)
+    
+    def should_send(self, alert: Alert) -> bool:
+        """Check if alert passes threshold filters.
+        
+        Args:
+            alert: Alert to check
+            
+        Returns:
+            True if alert should be sent
+        """
+        # Check allowed alert types
+        if self.allowed_alert_types and alert.alert_type not in self.allowed_alert_types:
+            return False
+        
+        # Check allowed severities
+        if self.allowed_severities and alert.severity not in self.allowed_severities:
+            return False
+        
+        # Check risk score threshold for RUG_WARNING
+        if alert.alert_type == "RUG_WARNING":
+            risk_score = alert.data.get("risk_score", 0)
+            if risk_score < self.min_risk_score:
+                return False
+        
+        # Check opportunity score threshold for OPPORTUNITY
+        if alert.alert_type == "OPPORTUNITY":
+            opp_score = alert.data.get("opportunity_score", 0)
+            if opp_score < self.min_opportunity_score:
+                return False
+        
+        return True
 
 
 class TelegramChannel(AlertChannel):
@@ -29,6 +82,7 @@ class TelegramChannel(AlertChannel):
         bot_token: str,
         chat_id: str,
         parse_mode: str = "HTML",
+        thresholds: TelegramThresholds | None = None,
     ) -> None:
         """
         Initialize Telegram channel.
@@ -37,10 +91,12 @@ class TelegramChannel(AlertChannel):
             bot_token: Telegram bot token from @BotFather
             chat_id: Target chat/channel ID
             parse_mode: Message parse mode (HTML or Markdown)
+            thresholds: Optional alert thresholds for filtering
         """
         self._bot_token = bot_token
         self._chat_id = chat_id
         self._parse_mode = parse_mode
+        self._thresholds = thresholds or TelegramThresholds()
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -128,8 +184,13 @@ class TelegramChannel(AlertChannel):
             alert: Alert to deliver
 
         Returns:
-            True if delivery succeeded
+            True if delivery succeeded, False if filtered or failed
         """
+        # Check thresholds
+        if not self._thresholds.should_send(alert):
+            logger.debug(f"Alert filtered by thresholds: {alert.alert_type}")
+            return True  # Not an error, just filtered
+        
         client = await self._get_client()
         message = self._format_message(alert)
         
